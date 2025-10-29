@@ -10,9 +10,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const decoded = await admin.auth().verifyIdToken(idToken);
 
-    // Check admin claim or existence in admins collection
-    let isAdmin = !!decoded.admin;
-    if (!isAdmin) {
+
+    // Fast admin check: prefer custom claim, fallback to Firestore only if missing
+    let isAdmin = false;
+    if (typeof decoded.admin !== 'undefined') {
+      isAdmin = !!decoded.admin;
+    } else {
+      // Only check Firestore if claim not present
       const adminDoc = await admin.firestore().collection('admins').doc(decoded.uid).get();
       isAdmin = adminDoc.exists;
     }
