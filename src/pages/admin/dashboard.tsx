@@ -9,10 +9,10 @@ export default function AdminDashboard() {
       </header>
 
       <nav className="mb-6 space-x-3">
-        <Link href="/admin/products"><a className="px-3 py-1 bg-gray-100 rounded">Products</a></Link>
-        <Link href="/admin/brands"><a className="px-3 py-1 bg-gray-100 rounded">Brands</a></Link>
-        <Link href="/admin/categories"><a className="px-3 py-1 bg-gray-100 rounded">Categories</a></Link>
-        <Link href="/admin/orders"><a className="px-3 py-1 bg-gray-100 rounded">Orders</a></Link>
+  <Link href="/admin/products" className="px-3 py-1 bg-gray-100 rounded">Products</Link>
+  <Link href="/admin/brands" className="px-3 py-1 bg-gray-100 rounded">Brands</Link>
+  <Link href="/admin/categories" className="px-3 py-1 bg-gray-100 rounded">Categories</Link>
+  <Link href="/admin/orders" className="px-3 py-1 bg-gray-100 rounded">Orders</Link>
       </nav>
 
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">

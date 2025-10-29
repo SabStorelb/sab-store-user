@@ -13,7 +13,7 @@ export default function NewProduct() {
           <p className="text-sm text-gray-500">املأ الحقول كما في النموذج</p>
         </div>
         <div>
-          <Link href="/admin/products"><a className="px-3 py-1 bg-gray-100 rounded">Back</a></Link>
+          <Link href="/admin/products" className="px-3 py-1 bg-gray-100 rounded">Back</Link>
         </div>
       </header>
 

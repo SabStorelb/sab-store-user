@@ -9,7 +9,7 @@ export default function ProductsList() {
           <p className="text-sm text-gray-500">قائمة المنتجات</p>
         </div>
         <div>
-          <Link href="/admin/products/new"><a className="bg-purple-600 text-white px-4 py-2 rounded">Add Product</a></Link>
+          <Link href="/admin/products/new" className="bg-purple-600 text-white px-4 py-2 rounded">Add Product</Link>
         </div>
       </header>
 
