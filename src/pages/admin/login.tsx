@@ -54,7 +54,10 @@ export default function AdminLogin() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <form onSubmit={submit} className="w-full max-w-md bg-white p-6 rounded-lg shadow">
-        <h2 className="text-2xl mb-4">Admin Login</h2>
+        <div className="flex flex-col items-center mb-4">
+          <img src="/sab-logo.png" alt="SAB Store Logo" className="w-24 h-24 mb-2 rounded-lg shadow" />
+          <h2 className="text-2xl">Admin Login</h2>
+        </div>
         {error && <div className="text-red-600 mb-2">{error}</div>}
         <label className="block mb-2">
           <div className="text-sm mb-1">Email</div>
