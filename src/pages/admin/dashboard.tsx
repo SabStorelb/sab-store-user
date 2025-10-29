@@ -102,7 +102,10 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen p-6 font-arabic">
-
+      <button
+        onClick={() => window.history.back()}
+        className="mb-4 px-4 py-2 bg-gray-200 rounded text-gray-700 hover:bg-gray-300"
+      >عودة | Back</button>
       <h1 className="text-4xl font-bold mb-8">لوحة التحكم - Dashboard | Sab Store</h1>
 
   <section className="grid grid-cols-1 md:grid-cols-4 gap-8">

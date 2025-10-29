@@ -23,6 +23,20 @@ export default function NewProduct() {
   const [available, setAvailable] = useState(true);
   const [featured, setFeatured] = useState(false);
   const [images, setImages] = useState<File[]>([]);
+  const colorOptions = [
+    { ar: 'أبيض', en: 'White', hex: '#FFFFFF' },
+    { ar: 'أسود', en: 'Black', hex: '#000000' },
+    { ar: 'أحمر', en: 'Red', hex: '#FF0000' },
+    { ar: 'أزرق', en: 'Blue', hex: '#0074D9' },
+    { ar: 'أخضر', en: 'Green', hex: '#2ECC40' },
+    { ar: 'أصفر', en: 'Yellow', hex: '#FFDC00' },
+    { ar: 'رمادي', en: 'Gray', hex: '#AAAAAA' },
+    { ar: 'برتقالي', en: 'Orange', hex: '#FF851B' },
+    { ar: 'بنفسجي', en: 'Purple', hex: '#B10DC9' },
+    { ar: 'وردي', en: 'Pink', hex: '#F012BE' },
+    { ar: 'بني', en: 'Brown', hex: '#8B4513' },
+  ];
+  const [colors, setColors] = useState<{ar: string, en: string, hex: string}[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [subcategories, setSubcategories] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
@@ -81,6 +95,7 @@ export default function NewProduct() {
       subcategory,
       brand,
       sizes,
+      colors,
       deliveryTime,
       rate,
       available,
@@ -94,6 +109,10 @@ export default function NewProduct() {
 
   return (
     <div className="min-h-screen p-6">
+      <button
+        onClick={() => window.history.back()}
+        className="mb-4 px-4 py-2 bg-gray-200 rounded text-gray-700 hover:bg-gray-300"
+      >عودة | Back</button>
       <h1 className="text-2xl font-bold mb-6">إضافة منتج - Add Product</h1>
       <form className="bg-white p-4 rounded shadow max-w-2xl" onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -159,6 +178,38 @@ export default function NewProduct() {
           </div>
         )}
         <div className="mt-4">
+          <label className="block mb-2">
+            <div className="text-sm mb-1">الألوان المتاحة - Available Colors</div>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {colorOptions.map((c, i) => (
+                <button
+                  type="button"
+                  key={i}
+                  className={`px-3 py-1 rounded border flex items-center gap-2 ${colors.some(sel => sel.ar === c.ar && sel.en === c.en) ? 'bg-purple-500 text-white' : 'bg-gray-100'}`}
+                  onClick={() => {
+                    if (colors.some(sel => sel.ar === c.ar && sel.en === c.en)) {
+                      setColors(colors.filter(sel => sel.ar !== c.ar || sel.en !== c.en));
+                    } else {
+                      setColors([...colors, c]);
+                    }
+                  }}
+                >
+                  <span style={{background: c.hex, borderRadius: '50%', width: 18, height: 18, display: 'inline-block', border: '1px solid #ccc'}}></span>
+                  {c.ar} | {c.en}
+                </button>
+              ))}
+            </div>
+            {colors.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {colors.map((c, i) => (
+                  <span key={i} className="bg-gray-200 rounded px-2 py-1 text-sm flex items-center gap-2">
+                    <span style={{background: c.hex, borderRadius: '50%', width: 18, height: 18, display: 'inline-block', border: '1px solid #ccc'}}></span>
+                    {c.ar} | {c.en}
+                  </span>
+                ))}
+              </div>
+            )}
+          </label>
           <label className="block">
             <div className="text-sm mb-1">اختر العلامة التجارية - Brand (اختياري)</div>
             <select value={brand} onChange={e => setBrand(e.target.value)} className="w-full border rounded px-3 py-2">
