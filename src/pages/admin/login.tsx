@@ -16,7 +16,9 @@ export default function AdminLogin() {
     setError(null);
     try {
       const userCred = await signInWithEmailAndPassword(firebaseAuth, email, password);
+      console.log('signed in firebase user:', userCred.user.uid);
       const idToken = await userCred.user.getIdToken();
+      console.log('got idToken length=', idToken?.length);
 
       // send idToken to server to create httpOnly session cookie
       const resp = await fetch('/api/auth/session', {
@@ -24,10 +26,25 @@ export default function AdminLogin() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken }),
       });
-      if (!resp.ok) throw new Error('Failed to create session');
 
+      if (!resp.ok) {
+        // try to read json or text for more info
+        let bodyText = '';
+        try {
+          const json = await resp.json();
+          bodyText = JSON.stringify(json);
+        } catch (e) {
+          bodyText = await resp.text();
+        }
+        console.error('session creation failed', resp.status, bodyText);
+        throw new Error(`Session creation failed: ${resp.status} ${bodyText}`);
+      }
+
+      // success
+      console.log('session cookie created, redirecting to dashboard');
       router.push('/admin/dashboard');
     } catch (err: any) {
+      console.error('login error', err);
       setError(err?.message || 'Login failed');
     } finally {
       setLoading(false);
