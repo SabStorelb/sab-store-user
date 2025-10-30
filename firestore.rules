@@ -1,0 +1,197 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Admins collection - authenticated users can read admin status
+    match /admins/{adminId} {
+      allow read: if request.auth != null && 
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true;
+
+      allow write: if request.auth != null &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Users collection - users can read/write their own data, admins can read all
+    match /users/{userId} {
+      allow read: if request.auth != null && 
+        (request.auth.uid == userId ||
+         (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true));
+      allow write: if request.auth != null && 
+        (request.auth.uid == userId ||
+         (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true));
+      allow create: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Push tokens - users can write their own token
+    match /pushTokens/{userId} {
+      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Products collection - read for all, write for admins only
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Brands collection - read for all, write for admins only
+    match /brands/{brandId} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Categories collection - read for all, write for admins only
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true;
+
+      // Subcategories - read for all, write for admins only
+      match /subcategory/{subcategoryId} {
+        allow read: if true;
+        allow write: if request.auth != null &&
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true;
+      }
+    }
+
+    // Customers collection - read for admins, users can read their own data
+    match /customers/{customerId} {
+      allow read: if request.auth != null && 
+        (request.auth.uid == customerId ||
+         (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true));
+      allow write: if request.auth != null && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true;
+      allow create: if request.auth != null && request.auth.uid == customerId;
+    }
+
+    // Orders collection - users can only read/write their own orders, admins can read all
+    match /orders/{orderId} {
+      allow read: if request.auth != null && 
+        (resource.data.userId == request.auth.uid || 
+         (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true));
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && 
+        (resource.data.userId == request.auth.uid ||
+         (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true));
+    }
+
+    // Addresses collection - users can only read/write their own addresses
+    match /addresses/{addressId} {
+      allow read, write: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Cart collection - users can only read/write their own cart
+    match /carts/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Wishlist collection - users can only read/write their own wishlist
+    match /wishlists/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Reviews collection - read for all, write for authenticated users on their own reviews
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && 
+        (resource.data.userId == request.auth.uid ||
+         (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true));
+    }
+
+    // Admin Notifications collection - only for admins
+    match /notifications/{notificationId} {
+      // Allow admins to read and write all notifications
+      allow read, write: if request.auth != null && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true;
+      
+      // Allow creating notifications (for system/automation)
+      allow create: if true;
+    }
+
+    // User Notifications collection - for customers
+    match /userNotifications/{notificationId} {
+      // Users can only read their own notifications
+      allow read: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      
+      // Users can mark their own notifications as read
+      allow update: if request.auth != null && 
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == resource.data.userId;
+      
+      // Allow system to create user notifications
+      allow create: if true;
+      
+      // Admins can read/write all user notifications
+      allow read, write: if request.auth != null && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Activity Log collection - only admins can read and write
+    match /activityLog/{logId} {
+      allow read, write, create: if request.auth != null && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Daily Stats collection - only admins can read and write
+    match /dailyStats/{statsId} {
+      allow read: if request.auth != null && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true;
+      allow write: if request.auth != null && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true;
+      allow create: if request.auth != null && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Support Messages collection - users can create messages, only admins can read/update/delete
+    match /supportMessages/{messageId} {
+      // Any user (authenticated or not) can create a support message
+      allow create: if true;
+      
+      // Only admins can read support messages
+      allow read: if request.auth != null && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true;
+      
+      // Only admins can update support messages (e.g., mark as read or change status)
+      allow update: if request.auth != null && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true;
+      
+      // Only admins can delete support messages
+      allow delete: if request.auth != null && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Banners collection - read for all, write for admins only
+    match /banners/{bannerId} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true;
+    }
+  }
+}

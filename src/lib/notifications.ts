@@ -1,3 +1,6 @@
+// Admin Notification utility functions
+// هذه الدوال لإرسال إشعارات للأدمن (في لوحة التحكم)
+// للإشعارات للعملاء، استخدم userNotifications.ts
 import { addDoc, collection, Timestamp, getFirestore } from 'firebase/firestore';
 import { getFirebaseClient } from './firebase';
 
@@ -5,12 +8,12 @@ import { getFirebaseClient } from './firebase';
 const getDb = () => getFirestore(getFirebaseClient());
 
 /**
- * أنواع الإشعارات المتاحة
+ * أنواع الإشعارات المتاحة للأدمن
  */
 export type NotificationType = 'order' | 'support' | 'product' | 'customer' | 'system';
 
 /**
- * إنشاء إشعار جديد في النظام
+ * إنشاء إشعار جديد للأدمن في لوحة التحكم
  * @param type - نوع الإشعار (order, support, product, customer, system)
  * @param title - عنوان الإشعار
  * @param message - نص الإشعار
