@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { firebaseDb } from '../../lib/firebase';
 import { collection, getDocs, doc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 
@@ -11,7 +13,8 @@ interface Customer {
   banned?: boolean;
 }
 
-export default function AdminCustomers() {
+const AdminCustomers: React.FC = () => {
+  const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState('');
@@ -20,7 +23,9 @@ export default function AdminCustomers() {
   useEffect(() => {
     async function fetchCustomers() {
       const snap = await getDocs(collection(firebaseDb, 'users'));
-      setCustomers(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer)));
+      // استبعد المستخدمين الذين لديهم isAdmin=true
+      const nonAdmins = snap.docs.filter(doc => !doc.data().isAdmin);
+      setCustomers(nonAdmins.map(doc => ({ id: doc.id, ...doc.data() } as Customer)));
       setLoading(false);
     }
     fetchCustomers();
@@ -31,7 +36,7 @@ export default function AdminCustomers() {
     const snap = await getDocs(q);
     const unpaid = snap.docs.some(doc => {
       const data = doc.data();
-      return data.status !== 'Delivered' && (data.total || 0) > 0;
+      return data.status !== 'paid';
     });
     return { hasOrders: snap.size > 0, hasUnpaid: unpaid };
   }
@@ -41,7 +46,12 @@ export default function AdminCustomers() {
     setError('');
     try {
       await updateDoc(doc(firebaseDb, 'users', customer.id), { isAdmin: !customer.isAdmin });
-      setCustomers(customers.map(c => c.id === customer.id ? { ...c, isAdmin: !c.isAdmin } : c));
+      if (!customer.isAdmin) {
+        // إذا تم تعيينه كأدمن، انتقل مباشرة إلى صفحة المدراء
+        router.push('/admin/admins');
+        return;
+      }
+      setCustomers(customers.map((c: Customer) => c.id === customer.id ? { ...c, isAdmin: !c.isAdmin } : c));
     } catch {
       setError('خطأ في تعيين كأدمن');
     }
@@ -59,7 +69,7 @@ export default function AdminCustomers() {
     }
     try {
       await updateDoc(doc(firebaseDb, 'users', customer.id), { banned: !customer.banned });
-      setCustomers(customers.map(c => c.id === customer.id ? { ...c, banned: !c.banned } : c));
+      setCustomers(customers.map((c: Customer) => c.id === customer.id ? { ...c, banned: !c.banned } : c));
     } catch {
       setError('خطأ في الحظر');
     }
@@ -77,7 +87,7 @@ export default function AdminCustomers() {
     }
     try {
       await deleteDoc(doc(firebaseDb, 'users', customer.id));
-      setCustomers(customers.filter(c => c.id !== customer.id));
+      setCustomers(customers.filter((c: Customer) => c.id !== customer.id));
     } catch {
       setError('خطأ في الحذف');
     }
@@ -86,9 +96,12 @@ export default function AdminCustomers() {
 
   return (
     <div className="min-h-screen p-6">
-      <header className="mb-6">
-        <h1 className="text-3xl font-bold">العملاء | Customers</h1>
-        <p className="text-sm text-gray-500">قائمة العملاء وإدارة الحسابات</p>
+      <header className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">العملاء | Customers</h1>
+          <p className="text-sm text-gray-500">قائمة العملاء وإدارة الحسابات</p>
+        </div>
+        <Link href="/admin" className="text-purple-600 hover:underline">⬅ العودة</Link>
       </header>
 
       <section className="bg-white rounded shadow p-4">
@@ -109,7 +122,7 @@ export default function AdminCustomers() {
               </tr>
             </thead>
             <tbody>
-              {customers.map(customer => (
+              {customers.map((customer: Customer) => (
                 <tr key={customer.id} className="border-b">
                   <td className="p-2 font-bold">{customer.name}</td>
                   <td className="p-2">{customer.email}</td>
@@ -142,4 +155,8 @@ export default function AdminCustomers() {
       </section>
     </div>
   );
-}
+};
+
+export default AdminCustomers;
+
+

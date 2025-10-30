@@ -88,8 +88,16 @@ export default function AdminDashboard() {
           }
         } else {
           try {
-            const snap = await getDocs(collection(firebaseDb, item.key));
-            newStats[item.key] = snap.size;
+            // عدل بطاقة العملاء لتستخدم مجموعة users
+            if (item.key === 'customers') {
+              const snap = await getDocs(collection(firebaseDb, 'users'));
+              // استبعد المستخدمين الذين لديهم isAdmin=true
+              const nonAdmins = snap.docs.filter(doc => !doc.data().isAdmin);
+              newStats[item.key] = nonAdmins.length;
+            } else {
+              const snap = await getDocs(collection(firebaseDb, item.key));
+              newStats[item.key] = snap.size;
+            }
           } catch (e) {
             newStats[item.key] = 0;
           }
@@ -102,13 +110,28 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen p-6 font-arabic">
-      <button
-        onClick={() => window.history.back()}
-        className="mb-4 px-4 py-2 bg-gray-200 rounded text-gray-700 hover:bg-gray-300"
-      >عودة | Back</button>
-      <h1 className="text-4xl font-bold mb-8">لوحة التحكم - Dashboard | Sab Store</h1>
+      <div className="flex items-center justify-between mb-8">
+        <button
+          onClick={async () => {
+            if (window.confirm('هل أنت متأكد أنك تريد تسجيل الخروج؟')) {
+              await fetch('/api/logout', { method: 'POST' });
+              window.location.href = '/admin/login';
+            }
+          }}
+          title="تسجيل الخروج"
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-red-500 hover:bg-red-600 shadow-lg transition text-white text-xl font-bold"
+          style={{ fontFamily: 'inherit' }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12" y2="16" />
+          </svg>
+        </button>
+        <h1 className="text-4xl font-bold">لوحة التحكم - Dashboard | Sab Store</h1>
+      </div>
 
-  <section className="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <section className="grid grid-cols-1 md:grid-cols-4 gap-8">
         {statConfig.map((card, idx) => {
           // Define target page for each card
           let target = null;
