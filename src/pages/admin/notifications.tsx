@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { firebaseDb } from '../../lib/firebase';
-import { collection, query, where, orderBy, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 
@@ -21,6 +21,9 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | 'all'>('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchNotifications();
@@ -91,6 +94,84 @@ export default function Notifications() {
     }
   }
 
+  async function deleteNotification(id: string) {
+    try {
+      setDeleting(true);
+      const docRef = doc(firebaseDb, 'notifications', id);
+      await deleteDoc(docRef);
+      setShowDeleteConfirm(false);
+      setDeleteTarget('');
+      fetchNotifications();
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      alert('فشل الحذف - Delete failed');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function deleteAllNotifications() {
+    try {
+      setDeleting(true);
+      const batch = writeBatch(firebaseDb);
+      
+      // حذف جميع الإشعارات الحالية في القائمة
+      notifications.forEach((notification) => {
+        const docRef = doc(firebaseDb, 'notifications', notification.id);
+        batch.delete(docRef);
+      });
+      
+      await batch.commit();
+      setShowDeleteConfirm(false);
+      setDeleteTarget('');
+      fetchNotifications();
+    } catch (error) {
+      console.error('Error deleting all notifications:', error);
+      alert('فشل حذف الإشعارات - Failed to delete notifications');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function deleteReadNotifications() {
+    try {
+      setDeleting(true);
+      const batch = writeBatch(firebaseDb);
+      
+      // حذف الإشعارات المقروءة فقط
+      const readNotifications = notifications.filter(n => n.read);
+      readNotifications.forEach((notification) => {
+        const docRef = doc(firebaseDb, 'notifications', notification.id);
+        batch.delete(docRef);
+      });
+      
+      await batch.commit();
+      setShowDeleteConfirm(false);
+      setDeleteTarget('');
+      fetchNotifications();
+    } catch (error) {
+      console.error('Error deleting read notifications:', error);
+      alert('فشل حذف الإشعارات المقروءة - Failed to delete read notifications');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  function confirmDelete(target: string) {
+    setDeleteTarget(target);
+    setShowDeleteConfirm(true);
+  }
+
+  function handleConfirmDelete() {
+    if (deleteTarget === 'all') {
+      deleteAllNotifications();
+    } else if (deleteTarget === 'read') {
+      deleteReadNotifications();
+    } else {
+      deleteNotification(deleteTarget);
+    }
+  }
+
   function getNotificationIcon(type: string) {
     switch (type) {
       case 'order': return '📦';
@@ -136,9 +217,61 @@ export default function Notifications() {
   }
 
   const unreadCount = notifications.filter(n => !n.read).length;
+  const readCount = notifications.filter(n => n.read).length;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-fade-in">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold mb-2">تأكيد الحذف</h3>
+              <p className="text-gray-600">
+                {deleteTarget === 'all' && 'هل أنت متأكد من حذف جميع الإشعارات؟'}
+                {deleteTarget === 'read' && 'هل أنت متأكد من حذف جميع الإشعارات المقروءة؟'}
+                {deleteTarget !== 'all' && deleteTarget !== 'read' && 'هل أنت متأكد من حذف هذا الإشعار؟'}
+              </p>
+              <p className="text-sm text-red-600 mt-2">⚠️ لا يمكن التراجع عن هذا الإجراء</p>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeleteTarget('');
+                }}
+                disabled={deleting}
+                className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold disabled:opacity-50"
+              >
+                ❌ إلغاء
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {deleting ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    جاري الحذف...
+                  </>
+                ) : (
+                  '🗑️ حذف'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -196,16 +329,44 @@ export default function Notifications() {
             {unreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
               >
-                ✅ تحديد الكل كمقروء
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                تحديد الكل كمقروء
+              </button>
+            )}
+            {readCount > 0 && (
+              <button
+                onClick={() => confirmDelete('read')}
+                className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                حذف المقروءة
+              </button>
+            )}
+            {notifications.length > 0 && (
+              <button
+                onClick={() => confirmDelete('all')}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                حذف الكل
               </button>
             )}
             <button
               onClick={fetchNotifications}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
             >
-              🔄 تحديث
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              تحديث
             </button>
           </div>
         </div>
@@ -272,23 +433,57 @@ export default function Notifications() {
                     </div>
                   </div>
 
-                  {!notification.read && (
+                  <div className="flex gap-2">
+                    {!notification.read && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          markAsRead(notification.id);
+                        }}
+                        className="text-blue-600 hover:text-blue-800 text-sm font-bold px-3 py-1 rounded hover:bg-blue-50"
+                        title="تحديد كمقروء"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </button>
+                    )}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        markAsRead(notification.id);
+                        confirmDelete(notification.id);
                       }}
-                      className="text-blue-600 hover:text-blue-800 text-sm font-bold"
+                      className="text-red-600 hover:text-red-800 text-sm font-bold px-3 py-1 rounded hover:bg-red-50"
+                      title="حذف"
                     >
-                      تحديد كمقروء
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
                     </button>
-                  )}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      <style jsx>{`
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: scale(0.9);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        .animate-fade-in {
+          animation: fade-in 0.2s ease-out;
+        }
+      `}</style>
     </div>
   );
 }
