@@ -3,9 +3,12 @@ import Link from 'next/link';
 export default function AdminOffers() {
   return (
     <div className="min-h-screen p-6">
-      <header className="mb-6">
-        <h1 className="text-3xl font-bold">Offers</h1>
-        <p className="text-sm text-gray-500">العروض والخصومات الحالية</p>
+      <header className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Offers</h1>
+          <p className="text-sm text-gray-500">العروض والخصومات الحالية</p>
+        </div>
+        <button onClick={() => window.history.back()} className="text-purple-600 hover:underline">⬅ العودة</button>
       </header>
 
       <nav className="mb-6 space-x-3">
