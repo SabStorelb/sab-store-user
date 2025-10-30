@@ -1,7 +1,7 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { firebaseDb } from '../../../lib/firebase';
-import { doc, getDoc, collection, getDocs, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, updateDoc, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import Link from 'next/link';
 
 export default function OrderDetails() {
@@ -139,6 +139,27 @@ export default function OrderDetails() {
     }
   };
 
+  // دالة حذف الطلب
+  const handleDeleteOrder = async () => {
+    if (!id) return;
+    
+    const confirmDelete = confirm('⚠️ هل أنت متأكد من حذف هذا الطلب؟\n\nسيتم حذف الطلب نهائياً ولا يمكن التراجع عن هذا الإجراء!');
+    if (!confirmDelete) return;
+    
+    try {
+      // حذف الطلب من Firestore
+      await deleteDoc(doc(firebaseDb, 'orders', id as string));
+      
+      alert('✅ تم حذف الطلب بنجاح!');
+      
+      // العودة لصفحة الطلبات
+      router.push('/admin/orders');
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      alert('❌ حدث خطأ أثناء حذف الطلب');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 p-6 flex items-center justify-center">
@@ -174,15 +195,29 @@ export default function OrderDetails() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
-        {/* زر العودة */}
-        <Link href="/admin/orders">
-          <button className="mb-6 px-6 py-3 bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 group">
-            <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        {/* أزرار الإجراءات */}
+        <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
+          {/* زر العودة */}
+          <Link href="/admin/orders">
+            <button className="px-6 py-3 bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 group">
+              <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              <span className="font-semibold">عودة للطلبات | Back to Orders</span>
+            </button>
+          </Link>
+
+          {/* زر حذف الطلب */}
+          <button
+            onClick={handleDeleteOrder}
+            className="px-6 py-3 bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2 font-bold group"
+          >
+            <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
-            <span className="font-semibold">عودة للطلبات | Back to Orders</span>
+            🗑️ حذف الطلب | Delete Order
           </button>
-        </Link>
+        </div>
 
         {/* عنوان الصفحة */}
         <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl shadow-xl p-6 md:p-8 mb-6 text-white">

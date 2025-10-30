@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { firebaseDb, firebaseStorage } from '../../lib/firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
@@ -34,37 +34,124 @@ export default function AdminProfile() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState('');
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
 
   useEffect(() => {
     fetchProfile();
   }, []);
 
+  useEffect(() => {
+    if (profile?.id && activeTab === 'activity') {
+      fetchActivityLogs();
+    }
+  }, [profile?.id, activeTab]);
+
   async function fetchProfile() {
     try {
-      // الحصول على معلومات الأدمن من Session
-      const res = await fetch('/api/auth/session');
-      const session = await res.json();
+      // الحصول على معلومات المستخدم الحالي من API
+      const res = await fetch('/api/auth/me');
+      const data = await res.json();
       
-      if (!session.user) {
+      if (!data.user) {
         router.push('/admin/login');
         return;
       }
 
-      const docRef = doc(firebaseDb, 'users', session.user.uid);
-      const docSnap = await getDoc(docRef);
+      const profileData = {
+        id: data.user.uid,
+        name: data.user.name,
+        email: data.user.email,
+        phone: data.user.phone,
+        bio: data.user.bio,
+        photoURL: data.user.photoURL,
+        role: data.user.role,
+        permissions: data.user.permissions,
+        createdAt: data.user.createdAt,
+        lastLogin: data.user.lastLogin,
+      } as AdminProfile;
 
-      if (docSnap.exists()) {
-        const data = { id: docSnap.id, ...docSnap.data() } as AdminProfile;
-        setProfile(data);
-        setName(data.name || '');
-        setPhone(data.phone || '');
-        setBio(data.bio || '');
-        setPhotoPreview(data.photoURL || '');
-      }
+      setProfile(profileData);
+      setName(profileData.name || '');
+      setPhone(profileData.phone || '');
+      setBio(profileData.bio || '');
+      setPhotoPreview(profileData.photoURL || '');
     } catch (error) {
       console.error('Error fetching profile:', error);
+      alert('حدث خطأ في جلب البيانات. تأكد من تسجيل الدخول.');
+      router.push('/admin/login');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchActivityLogs() {
+    if (!profile?.id) return;
+    
+    setLoadingLogs(true);
+    try {
+      const logsRef = collection(firebaseDb, 'activityLogs');
+      const q = query(
+        logsRef,
+        where('userId', '==', profile.id),
+        orderBy('timestamp', 'desc'),
+        limit(20)
+      );
+      
+      const snapshot = await getDocs(q);
+      const logs = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      
+      setActivityLogs(logs);
+    } catch (error) {
+      console.error('Error fetching activity logs:', error);
+      setActivityLogs([]);
+    } finally {
+      setLoadingLogs(false);
+    }
+  }
+
+  function getActivityIcon(action: string): string {
+    if (action.includes('تسجيل الدخول') || action.includes('login')) return '🔑';
+    if (action.includes('منتج') || action.includes('product')) return '📦';
+    if (action.includes('طلب') || action.includes('order')) return '🛒';
+    if (action.includes('عميل') || action.includes('customer')) return '👤';
+    if (action.includes('علامة تجارية') || action.includes('brand')) return '🏷️';
+    if (action.includes('تصنيف') || action.includes('category')) return '📂';
+    if (action.includes('إعدادات') || action.includes('settings')) return '⚙️';
+    if (action.includes('حذف') || action.includes('delete')) return '🗑️';
+    if (action.includes('تعديل') || action.includes('edit')) return '✏️';
+    if (action.includes('إضافة') || action.includes('add')) return '➕';
+    return '📝';
+  }
+
+  function formatTimestamp(timestamp: any): string {
+    if (!timestamp) return 'غير معروف';
+    
+    try {
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+      
+      if (diffMins < 1) return 'الآن';
+      if (diffMins < 60) return `منذ ${diffMins} ${diffMins === 1 ? 'دقيقة' : 'دقائق'}`;
+      if (diffHours < 24) return `منذ ${diffHours} ${diffHours === 1 ? 'ساعة' : 'ساعات'}`;
+      if (diffDays < 7) return `منذ ${diffDays} ${diffDays === 1 ? 'يوم' : 'أيام'}`;
+      
+      return date.toLocaleDateString('ar-SA', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'غير معروف';
     }
   }
 
@@ -359,22 +446,38 @@ export default function AdminProfile() {
         {activeTab === 'activity' && (
           <div>
             <h3 className="text-xl font-bold mb-4">آخر الأنشطة</h3>
-            <div className="space-y-3">
-              {[
-                { action: 'تسجيل الدخول', time: 'منذ ساعة', icon: '🔑' },
-                { action: 'تعديل منتج #123', time: 'منذ ساعتين', icon: '✏️' },
-                { action: 'إضافة عميل جديد', time: 'منذ 3 ساعات', icon: '👤' },
-                { action: 'معالجة طلب #456', time: 'منذ 5 ساعات', icon: '📦' },
-              ].map((activity, idx) => (
-                <div key={idx} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                  <span className="text-2xl">{activity.icon}</span>
-                  <div className="flex-1">
-                    <div className="font-bold">{activity.action}</div>
-                    <div className="text-sm text-gray-500">{activity.time}</div>
+            
+            {loadingLogs ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
+                <p className="mt-2 text-gray-600">جاري تحميل السجل...</p>
+              </div>
+            ) : activityLogs.length === 0 ? (
+              <div className="text-center py-8 bg-gray-50 rounded-lg">
+                <span className="text-4xl">📭</span>
+                <p className="mt-2 text-gray-600">لا توجد أنشطة مسجلة</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {activityLogs.map((log) => (
+                  <div key={log.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                    <span className="text-2xl">{getActivityIcon(log.action)}</span>
+                    <div className="flex-1">
+                      <div className="font-bold">{log.action}</div>
+                      {log.details && (
+                        <div className="text-sm text-gray-600">{log.details}</div>
+                      )}
+                      <div className="text-sm text-gray-500">{formatTimestamp(log.timestamp)}</div>
+                    </div>
+                    {log.ipAddress && (
+                      <div className="text-xs text-gray-400">
+                        IP: {log.ipAddress}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

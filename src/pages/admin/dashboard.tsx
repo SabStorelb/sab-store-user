@@ -75,24 +75,26 @@ const statConfig = [
     chartData: [35, 38, 40, 42, 45, 48, 50],
     hasQuickView: false,
   },
-  {
-    key: 'addresses', labelEn: 'Addresses', labelAr: 'العناوين', color: 'bg-teal-400',
-    icon: (<svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 12.414a2 2 0 00-2.828 0l-4.243 4.243a8 8 0 1111.314 0z" /></svg>),
-    chartData: [45, 48, 47, 50, 52, 53, 55],
-    hasQuickView: false,
-  },
+  // DISABLED: addresses - تم تعطيلها مؤقتاً
+  // {
+  //   key: 'addresses', labelEn: 'Addresses', labelAr: 'العناوين', color: 'bg-teal-400',
+  //   icon: (<svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 12.414a2 2 0 00-2.828 0l-4.243 4.243a8 8 0 1111.314 0z" /></svg>),
+  //   chartData: [45, 48, 47, 50, 52, 53, 55],
+  //   hasQuickView: false,
+  // },
   {
     key: 'admins', labelEn: 'Admins', labelAr: 'المدراء', color: 'bg-gray-500',
     icon: (<svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path strokeLinecap="round" strokeLinejoin="round" d="M6 20v-2a4 4 0 014-4h4a4 4 0 014 4v2" /></svg>),
     chartData: [3, 3, 3, 3, 3, 3, 3],
     hasQuickView: false,
   },
-  {
-    key: 'dailyStats', labelEn: 'Daily Stats', labelAr: 'إحصائيات يومية', color: 'bg-indigo-400',
-    icon: (<svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>),
-    chartData: [20, 22, 25, 28, 30, 32, 35],
-    hasQuickView: false,
-  },
+  // DISABLED: dailyStats - تم تعطيلها لعدم وجود صفحة مخصصة لها
+  // {
+  //   key: 'dailyStats', labelEn: 'Daily Stats', labelAr: 'إحصائيات يومية', color: 'bg-indigo-400',
+  //   icon: (<svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>),
+  //   chartData: [20, 22, 25, 28, 30, 32, 35],
+  //   hasQuickView: false,
+  // },
 ];
 
 
@@ -107,6 +109,25 @@ export default function AdminDashboard() {
   const [selectedModal, setSelectedModal] = useState<{ type: string; title: string } | null>(null);
   const [showOrderNotification, setShowOrderNotification] = useState(true);
   const [lastSeenOrderCount, setLastSeenOrderCount] = useState(0);
+  const [adminName, setAdminName] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
+
+  // جلب معلومات الأدمن
+  useEffect(() => {
+    async function fetchAdminInfo() {
+      try {
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
+        if (data.user) {
+          setAdminName(data.user.name || '');
+          setAdminEmail(data.user.email || '');
+        }
+      } catch (error) {
+        console.error('Error fetching admin info:', error);
+      }
+    }
+    fetchAdminInfo();
+  }, []);
 
   // تحميل آخر عدد طلبات تم رؤيته من localStorage
   useEffect(() => {
@@ -307,28 +328,31 @@ export default function AdminDashboard() {
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
           {/* Support messages icon with unread counter */}
-          <Link href="/admin/support-messages" title="رسائل الدعم" className="relative w-10 h-10 flex items-center justify-center rounded-full bg-blue-500 hover:bg-blue-600 shadow-lg transition text-white text-xl font-bold">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-6 h-6">
+          <Link href="/admin/support-messages" title="رسائل الدعم | Support Messages" className="relative flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a3 3 0 003.22 0L22 8m-19 8V8a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
             </svg>
+            <span className="hidden md:inline">الرسائل</span>
             {unreadSupportCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full px-2 py-0.5 font-bold shadow">{unreadSupportCount}</span>
+              <span className="bg-red-600 text-white text-xs rounded-full px-2 py-0.5 font-bold shadow">{unreadSupportCount}</span>
             )}
           </Link>
 
           {/* Activity Log Link */}
-          <Link href="/admin/activity-log" title="سجل النشاط" className="w-10 h-10 flex items-center justify-center rounded-full bg-purple-500 hover:bg-purple-600 shadow-lg transition text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-6 h-6">
+          <Link href="/admin/activity-log" title="سجل النشاط | Activity Log" className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
+            <span className="hidden md:inline">السجل</span>
           </Link>
 
           {/* Settings Link */}
-          <Link href="/admin/settings" title="الإعدادات" className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-600 hover:bg-gray-700 shadow-lg transition text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-6 h-6">
+          <Link href="/admin/settings" title="الإعدادات | Settings" className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-600 to-slate-600 hover:from-gray-700 hover:to-slate-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
+            <span className="hidden md:inline">الإعدادات</span>
           </Link>
 
           {/* Profile Link */}
@@ -356,7 +380,19 @@ export default function AdminDashboard() {
             <span className="hidden md:inline">تسجيل الخروج</span>
           </button>
         </div>
-        <h1 className="text-4xl font-bold">لوحة التحكم - Dashboard | Sab Store</h1>
+        
+        {/* Admin Info */}
+        <div className="flex items-center gap-3">
+          <div className="text-right">
+            <h1 className="text-4xl font-bold text-gray-800">لوحة التحكم - Dashboard</h1>
+            {adminName && (
+              <p className="text-lg text-gray-600 mt-1">
+                مرحباً، <span className="font-bold text-blue-600">{adminName}</span> 👋
+              </p>
+            )}
+          </div>
+          <div className="text-6xl">🎯</div>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -387,7 +423,7 @@ export default function AdminDashboard() {
 
               const cardInner = (
                 <div 
-                  className={`${item.color} rounded-lg shadow-md p-4 flex flex-col justify-between min-h-[140px] cursor-pointer hover:scale-[1.02] hover:shadow-xl transition-all duration-300 relative overflow-hidden`}
+                  className={`${item.color} rounded-xl shadow-lg p-6 flex flex-col justify-between h-[280px] cursor-pointer hover:scale-[1.02] hover:shadow-2xl transition-all duration-300 relative overflow-hidden`}
                   onClick={() => {
                     if (item.key === 'orders' && details?.new > 0) {
                       // حفظ عدد الطلبات الجديدة في localStorage
@@ -399,7 +435,7 @@ export default function AdminDashboard() {
                 >
                   {/* إشعار الطلبات الجديدة - في وسط البطاقة */}
                   {item.badge && details?.new > 0 && showOrderNotification && (
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 rounded-lg">
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 rounded-xl">
                       <div className="relative">
                         {/* الدوائر المتموجة */}
                         <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75 scale-[2.5]"></div>
@@ -428,33 +464,38 @@ export default function AdminDashboard() {
                     </div>
                   )}
 
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
-                      <div className="text-4xl font-bold text-white mb-1">{currentStat}</div>
-                      {/* عرض التفاصيل الإضافية */}
+                      <div className="text-6xl font-black text-white mb-2 drop-shadow-lg">{currentStat}</div>
+                    </div>
+                    <div className="text-white/80">{item.icon}</div>
+                  </div>
+
+                  <div className="mt-auto">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="text-xl font-black text-white mb-1">{item.labelEn}</div>
+                        <div className="text-lg font-bold text-white/90 mb-2">{item.labelAr}</div>
+                      </div>
+                      
+                      {/* عرض التفاصيل بجانب النص */}
                       {details && item.key === 'customers' && (
-                        <div className="text-xs text-white/80 space-y-0.5">
+                        <div className="text-sm text-white/90 space-y-1 font-semibold text-right">
                           <div>✅ نشط: {details.active}</div>
                           <div>💤 غير نشط: {details.inactive}</div>
                         </div>
                       )}
                       {details && item.key === 'orders' && (
-                        <div className="text-xs text-white/80 space-y-0.5">
+                        <div className="text-sm text-white/90 space-y-1 font-semibold text-right">
                           <div>💰 مدفوع: {details.paid}</div>
                           <div>📂 مفتوح: {details.open}</div>
                           <div>✅ مغلق: {details.closed}</div>
                         </div>
                       )}
                     </div>
-                    <div className="text-white/70 scale-75">{item.icon}</div>
-                  </div>
-
-                  <div className="mt-auto">
-                    <div className="text-base font-bold text-white">{item.labelEn}</div>
-                    <div className="text-sm text-white/80">{item.labelAr}</div>
                     
                     {/* Trend Badge */}
-                    <div className="mt-1.5">
+                    <div className="mt-2">
                       <TrendBadge value={trend} />
                     </div>
                   </div>
@@ -467,7 +508,7 @@ export default function AdminDashboard() {
                         e.stopPropagation();
                         setSelectedModal({ type: item.key, title: item.labelAr });
                       }}
-                      className="mt-2 w-full bg-white/20 hover:bg-white/30 text-white text-xs py-1.5 rounded-md transition font-bold backdrop-blur-sm"
+                      className="mt-3 w-full bg-white/20 hover:bg-white/40 text-white text-base py-3 rounded-lg transition-all font-bold backdrop-blur-sm border-2 border-white/30 hover:border-white/60"
                     >
                       🔍 عرض التفاصيل
                     </button>
@@ -490,20 +531,21 @@ export default function AdminDashboard() {
               );
             });
 
+            // DISABLED: Summary - تم تعطيلها مؤقتاً
             // Find index of Daily Stats
-            const dailyStatsIdx = statConfig.findIndex(item => item.key === 'dailyStats');
+            // const dailyStatsIdx = statConfig.findIndex(item => item.key === 'dailyStats');
             // Insert Summary after Daily Stats
-            cards.splice(dailyStatsIdx + 1, 0,
-              <Link href="/admin/summary" key="summary" className="bg-green-600 rounded-lg shadow-md p-4 flex flex-col justify-between min-h-[140px] cursor-pointer hover:scale-[1.02] hover:shadow-xl transition-all duration-300">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="text-4xl font-bold text-white">📊</div>
-                </div>
-                <div className="mt-auto">
-                  <div className="text-base font-bold text-white">Summary</div>
-                  <div className="text-sm text-white/80">ملخص الإحصائيات</div>
-                </div>
-              </Link>
-            );
+            // cards.splice(dailyStatsIdx + 1, 0,
+            //   <Link href="/admin/summary" key="summary" className="bg-green-600 rounded-lg shadow-md p-4 flex flex-col justify-between min-h-[140px] cursor-pointer hover:scale-[1.02] hover:shadow-xl transition-all duration-300">
+            //     <div className="flex items-center justify-between mb-1">
+            //       <div className="text-4xl font-bold text-white">📊</div>
+            //     </div>
+            //     <div className="mt-auto">
+            //       <div className="text-base font-bold text-white">Summary</div>
+            //       <div className="text-sm text-white/80">ملخص الإحصائيات</div>
+            //     </div>
+            //   </Link>
+            // );
             return cards;
           })()
         )}
