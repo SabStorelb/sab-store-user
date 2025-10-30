@@ -1,3 +1,5 @@
+
+
 import { useEffect, useState } from 'react';
 import { firebaseDb } from '../../lib/firebase';
 import { collection, getDocs } from 'firebase/firestore';
@@ -12,8 +14,8 @@ export default function AdminAdmins() {
       setLoading(true);
       setError('');
       try {
-        const snap = await getDocs(collection(firebaseDb, 'users'));
-        setAdmins(snap.docs.filter(doc => doc.data().isAdmin).map(doc => ({ id: doc.id, ...doc.data() })));
+        const snap = await getDocs(collection(firebaseDb, 'admins'));
+        setAdmins(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       } catch {
         setError('تعذر جلب المدراء');
       }
@@ -48,7 +50,7 @@ export default function AdminAdmins() {
             <tbody>
               {admins.map(admin => (
                 <tr key={admin.id} className="border-b">
-                  <td className="p-2 font-bold">{admin.fullName || admin.name || '-'}</td>
+                  <td className="p-2 font-bold">{admin.name || admin.fullName || '-'}</td>
                   <td className="p-2">{admin.email || '-'}</td>
                   <td className="p-2">{admin.phone || '-'}</td>
                 </tr>

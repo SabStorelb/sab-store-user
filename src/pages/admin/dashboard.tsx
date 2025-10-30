@@ -1,3 +1,11 @@
+import * as XLSX from 'xlsx';
+function exportStatsToExcel(stats: { [key: string]: number }) {
+  const data = Object.entries(stats).map(([key, value]) => ({ القسم: key, العدد: value }));
+  const worksheet = XLSX.utils.json_to_sheet(data);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Statistics');
+  XLSX.writeFile(workbook, 'statistics.xlsx');
+}
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -55,10 +63,6 @@ const statConfig = [
     icon: (<svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path strokeLinecap="round" strokeLinejoin="round" d="M6 20v-2a4 4 0 014-4h4a4 4 0 014 4v2" /></svg>),
   },
   {
-    key: 'users', labelEn: 'Users', labelAr: 'المستخدمين', color: 'bg-yellow-400', percent: '10%+',
-    icon: (<svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path strokeLinecap="round" strokeLinejoin="round" d="M6 20v-2a4 4 0 014-4h4a4 4 0 014 4v2" /></svg>),
-  },
-  {
     key: 'dailyStats', labelEn: 'Daily Stats', labelAr: 'إحصائيات يومية', color: 'bg-indigo-400', percent: '3%+',
     icon: (<svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>),
   },
@@ -88,17 +92,9 @@ export default function AdminDashboard() {
           }
         } else {
           try {
-            // عدل بطاقة العملاء لتستخدم مجموعة users
-            if (item.key === 'customers') {
-              const snap = await getDocs(collection(firebaseDb, 'users'));
-              // استبعد المستخدمين الذين لديهم isAdmin=true
-              const nonAdmins = snap.docs.filter(doc => !doc.data().isAdmin);
-              newStats[item.key] = nonAdmins.length;
-            } else {
-              const snap = await getDocs(collection(firebaseDb, item.key));
-              newStats[item.key] = snap.size;
-            }
-          } catch (e) {
+            const snap = await getDocs(collection(firebaseDb, item.key));
+            newStats[item.key] = snap.size;
+          } catch {
             newStats[item.key] = 0;
           }
         }
@@ -108,76 +104,6 @@ export default function AdminDashboard() {
     fetchStats();
   }, []);
 
-  return (
-    <div className="min-h-screen p-6 font-arabic">
-      <div className="flex items-center justify-between mb-8">
-        <button
-          onClick={async () => {
-            if (window.confirm('هل أنت متأكد أنك تريد تسجيل الخروج؟')) {
-              await fetch('/api/logout', { method: 'POST' });
-              window.location.href = '/admin/login';
-            }
-          }}
-          title="تسجيل الخروج"
-          className="w-10 h-10 flex items-center justify-center rounded-full bg-red-500 hover:bg-red-600 shadow-lg transition text-white text-xl font-bold"
-          style={{ fontFamily: 'inherit' }}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12" y2="16" />
-          </svg>
-        </button>
-        <h1 className="text-4xl font-bold">لوحة التحكم - Dashboard | Sab Store</h1>
-      </div>
-
-      <section className="grid grid-cols-1 md:grid-cols-4 gap-8">
-        {statConfig.map((card, idx) => {
-          // Define target page for each card
-          let target = null;
-          if (card.key === 'products') target = '/admin/products';
-          else if (card.key === 'orders') target = '/admin/orders';
-          else if (card.key === 'brands') target = '/admin/brands';
-          else if (card.key === 'categories') target = '/admin/categories';
-          else if (card.key === 'subcategories') target = '/admin/categories/subcategories';
-          else if (card.key === 'customers') target = '/admin/customers';
-          else if (card.key === 'banners') target = '/admin/banners';
-          else if (card.key === 'addresses') target = '/admin/addresses';
-          else if (card.key === 'admins') target = '/admin/admins';
-          else if (card.key === 'users') target = '/admin/users';
-          else if (card.key === 'dailyStats') target = '/admin/dailyStats';
-
-          return target ? (
-            <Link key={card.key} href={target} className={`rounded-2xl p-8 flex flex-col justify-between h-48 text-white shadow-lg cursor-pointer transition-transform hover:scale-105 ${card.color}`}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-4xl font-bold">{stats[card.key] ?? 0}</span>
-                <div className="flex flex-col items-center">
-                  <div className="bg-white bg-opacity-20 rounded-lg p-2 mb-1">{card.icon}</div>
-                  <span className="font-semibold text-lg">{card.labelEn}</span>
-                  <span className="text-sm">{card.labelAr}</span>
-                </div>
-              </div>
-              <div className="flex items-end justify-end">
-                <span className="text-xs font-bold">{card.percent} <span className="ml-1">↗</span></span>
-              </div>
-            </Link>
-          ) : (
-            <div key={card.key} className={`rounded-2xl p-8 flex flex-col justify-between h-48 text-white shadow-lg ${card.color}`}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-4xl font-bold">{stats[card.key] ?? 0}</span>
-                <div className="flex flex-col items-center">
-                  <div className="bg-white bg-opacity-20 rounded-lg p-2 mb-1">{card.icon}</div>
-                  <span className="font-semibold text-lg">{card.labelEn}</span>
-                  <span className="text-sm">{card.labelAr}</span>
-                </div>
-              </div>
-              <div className="flex items-end justify-end">
-                <span className="text-xs font-bold">{card.percent} <span className="ml-1">↗</span></span>
-              </div>
-            </div>
-          );
-        })}
-      </section>
-    </div>
-  );
 }
+
+
