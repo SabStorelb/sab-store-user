@@ -332,10 +332,11 @@ export default function AdminDashboard() {
           </Link>
 
           {/* Profile Link */}
-          <Link href="/admin/profile" title="الملف الشخصي" className="w-10 h-10 flex items-center justify-center rounded-full bg-green-500 hover:bg-green-600 shadow-lg transition text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-6 h-6">
+          <Link href="/admin/profile" title="الملف الشخصي | Profile" className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
+            <span className="hidden md:inline">الملف الشخصي</span>
           </Link>
 
           {/* Logout button */}
@@ -346,15 +347,13 @@ export default function AdminDashboard() {
                 window.location.href = '/admin/login';
               }
             }}
-            title="تسجيل الخروج"
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-red-500 hover:bg-red-600 shadow-lg transition text-white text-xl font-bold"
-            style={{ fontFamily: 'inherit' }}
+            title="تسجيل الخروج | Logout"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12" y2="16" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
+            <span className="hidden md:inline">تسجيل الخروج</span>
           </button>
         </div>
         <h1 className="text-4xl font-bold">لوحة التحكم - Dashboard | Sab Store</h1>
