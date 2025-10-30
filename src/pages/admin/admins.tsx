@@ -1,5 +1,3 @@
-
-
 import { useEffect, useState } from 'react';
 import { firebaseDb } from '../../lib/firebase';
 import { collection, getDocs } from 'firebase/firestore';
@@ -14,6 +12,7 @@ export default function AdminAdmins() {
       setLoading(true);
       setError('');
       try {
+        // جلب المدراء من مجموعة admins مباشرة
         const snap = await getDocs(collection(firebaseDb, 'admins'));
         setAdmins(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       } catch {
@@ -33,6 +32,7 @@ export default function AdminAdmins() {
         </div>
         <button onClick={() => window.history.back()} className="text-purple-600 hover:underline">⬅ العودة</button>
       </header>
+
       <section className="bg-white rounded shadow p-4">
         {loading ? (
           <div className="text-gray-500">جاري التحميل...</div>
@@ -44,7 +44,7 @@ export default function AdminAdmins() {
               <tr className="bg-gray-100">
                 <th className="p-2">الاسم</th>
                 <th className="p-2">البريد</th>
-                <th className="p-2">هاتف</th>
+                <th className="p-2">الهاتف</th>
               </tr>
             </thead>
             <tbody>

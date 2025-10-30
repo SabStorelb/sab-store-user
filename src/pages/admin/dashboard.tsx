@@ -160,18 +160,48 @@ export default function AdminDashboard() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {/* Render stat cards, insert Summary next to Daily Stats */}
         {(() => {
-          const cards = statConfig.map(item => (
-            <div key={item.key} className={`${item.color} rounded-xl shadow p-6 flex flex-col justify-between min-h-[140px] cursor-pointer hover:scale-[1.03] transition-transform`}>
-              <div className="flex items-center justify-between">
-                <div className="text-4xl font-bold text-white">{stats[item.key] ?? 0}</div>
+          const cards = statConfig.map(item => {
+            // determine target path for clickable cards
+            let target: string | null = null;
+            if (item.key === 'products') target = '/admin/products';
+            else if (item.key === 'orders') target = '/admin/orders';
+            else if (item.key === 'brands') target = '/admin/brands';
+            else if (item.key === 'categories') target = '/admin/categories';
+            else if (item.key === 'subcategories') target = '/admin/categories/subcategories';
+            else if (item.key === 'customers') target = '/admin/customers';
+            else if (item.key === 'banners') target = '/admin/banners';
+            else if (item.key === 'addresses') target = '/admin/addresses';
+            else if (item.key === 'admins') target = '/admin/admins';
+            else if (item.key === 'users') target = '/admin/users';
+            else if (item.key === 'dailyStats') target = '/admin/dailyStats';
+
+            const cardInner = (
+              <div className={`${item.color} rounded-xl shadow p-6 flex flex-col justify-between min-h-[140px] cursor-pointer hover:scale-[1.03] transition-transform`}>
+                <div className="flex items-center justify-between">
+                  <div className="text-4xl font-bold text-white">{stats[item.key] ?? 0}</div>
+                </div>
+                <div className="mt-2">
+                  <div className="text-lg font-bold text-white">{item.labelEn}</div>
+                  <div className="text-sm text-white/80">{item.labelAr}</div>
+                  <div className="text-xs text-white/60 mt-1">{item.percent}</div>
+                </div>
               </div>
-              <div className="mt-2">
-                <div className="text-lg font-bold text-white">{item.labelEn}</div>
-                <div className="text-sm text-white/80">{item.labelAr}</div>
-                <div className="text-xs text-white/60 mt-1">{item.percent}</div>
+            );
+
+            if (target) {
+              return (
+                <Link key={item.key} href={target} className="block">
+                  {cardInner}
+                </Link>
+              );
+            }
+
+            return (
+              <div key={item.key}>
+                {cardInner}
               </div>
-            </div>
-          ));
+            );
+          });
           // Find index of Daily Stats
           const dailyStatsIdx = statConfig.findIndex(item => item.key === 'dailyStats');
           // Insert Summary after Daily Stats
