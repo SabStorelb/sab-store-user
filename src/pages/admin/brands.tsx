@@ -26,6 +26,10 @@ export default function BrandsPage() {
 
   return (
     <div className="min-h-screen p-6">
+      <button
+        onClick={() => window.history.back()}
+        className="mb-4 px-4 py-2 bg-gray-200 rounded text-gray-700 hover:bg-gray-300"
+      >عودة | Back</button>
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">العلامات التجارية | Brands</h1>
         <Link href="/admin/brands/new" className="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700 transition">إضافة علامة تجارية</Link>

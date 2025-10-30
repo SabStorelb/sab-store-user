@@ -96,6 +96,10 @@ const BrandDetailsPage = () => {
 
   return (
     <div className="min-h-screen p-6 max-w-2xl mx-auto">
+      <button
+        onClick={() => window.history.back()}
+        className="mb-4 px-4 py-2 bg-gray-200 rounded text-gray-700 hover:bg-gray-300"
+      >عودة | Back</button>
       <h1 className="text-2xl font-bold mb-4">تفاصيل العلامة التجارية</h1>
       <div className="bg-white rounded shadow p-6 mb-4">
         <div className="flex gap-4 items-center mb-4">
