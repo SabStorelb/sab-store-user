@@ -121,8 +121,11 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true;
       
-      // Allow creating notifications (for system/automation)
+      // Allow creating notifications without authentication (for Cloud Functions)
       allow create: if true;
+      
+      // Allow Cloud Functions to write by checking if request has no auth
+      allow write: if request.auth == null;
     }
 
     // User Notifications collection - for customers
@@ -136,8 +139,11 @@ service cloud.firestore {
         resource.data.userId == request.auth.uid &&
         request.resource.data.userId == resource.data.userId;
       
-      // Allow system to create user notifications
+      // Allow system to create user notifications without authentication (for Cloud Functions)
       allow create: if true;
+      
+      // Allow Cloud Functions to write by checking if request has no auth
+      allow write: if request.auth == null;
       
       // Admins can read/write all user notifications
       allow read, write: if request.auth != null && 

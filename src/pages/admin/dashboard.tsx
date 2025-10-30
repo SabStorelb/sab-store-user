@@ -58,7 +58,7 @@ const statConfig = [
     hasQuickView: false,
   },
   {
-    key: 'customers', labelEn: 'Customers', labelAr: 'العملاء', color: 'bg-pink-400',
+    key: 'customers', labelEn: 'Customers', labelAr: 'العملاء', color: 'bg-indigo-500',
     icon: (<svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20h6M3 20h5v-2a4 4 0 013-3.87M16 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>),
     chartData: [120, 135, 142, 158, 165, 178, 190],
     hasQuickView: true,
@@ -99,14 +99,36 @@ const statConfig = [
 export default function AdminDashboard() {
   // Unread support messages counter and notification sound
   const [unreadSupportCount, setUnreadSupportCount] = useState(0);
-  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const prevSupportCount = useRef(0);
-  const prevNotificationsCount = useRef(0);
   const [stats, setStats] = useState<{ [key: string]: number }>({});
   const [detailedStats, setDetailedStats] = useState<{ [key: string]: any }>({});
   const [trends, setTrends] = useState<{ [key: string]: number }>({});
   const [loading, setLoading] = useState(true);
   const [selectedModal, setSelectedModal] = useState<{ type: string; title: string } | null>(null);
+  const [showOrderNotification, setShowOrderNotification] = useState(true);
+  const [lastSeenOrderCount, setLastSeenOrderCount] = useState(0);
+
+  // تحميل آخر عدد طلبات تم رؤيته من localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('lastSeenOrderCount');
+    if (saved) {
+      setLastSeenOrderCount(parseInt(saved));
+    }
+  }, []);
+
+  // التحقق من وجود طلبات جديدة
+  useEffect(() => {
+    if (detailedStats.orders?.new > 0) {
+      // إذا كان عدد الطلبات الجديدة أكبر من آخر عدد تم رؤيته، أظهر الإشعار
+      if (detailedStats.orders.new > lastSeenOrderCount) {
+        setShowOrderNotification(true);
+      } else {
+        setShowOrderNotification(false);
+      }
+    } else {
+      setShowOrderNotification(false);
+    }
+  }, [detailedStats.orders?.new, lastSeenOrderCount]);
 
   useEffect(() => {
     const q = query(collection(firebaseDb, 'supportMessages'), where('read', '==', false));
@@ -117,19 +139,6 @@ export default function AdminDashboard() {
         audio.play();
       }
       prevSupportCount.current = snapshot.size;
-    });
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    const q = query(collection(firebaseDb, 'notifications'), where('read', '==', false));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setUnreadNotificationsCount(snapshot.size);
-      if (snapshot.size > prevNotificationsCount.current) {
-        const audio = new Audio('/sounds/notify.mp3');
-        audio.play();
-      }
-      prevNotificationsCount.current = snapshot.size;
     });
     return () => unsubscribe();
   }, []);
@@ -205,19 +214,37 @@ export default function AdminDashboard() {
           }
 
         } else if (item.key === 'orders') {
-          // ✅ إضافة تفاصيل الطلبات مع حالة الدفع
+          // ✅ إضافة تفاصيل الطلبات مع حالة الدفع والحالة الفعلية
           try {
             const snap = await getDocs(collection(firebaseDb, 'orders'));
             newStats[item.key] = snap.size;
             
-            const paidOrders = snap.docs.filter(doc => doc.data().paymentStatus === 'paid' || doc.data().isPaid);
-            const pendingOrders = snap.docs.filter(doc => !doc.data().paymentStatus || doc.data().paymentStatus === 'pending');
-            const newOrders = snap.docs.filter(doc => doc.data().status === 'new' || doc.data().status === 'pending');
+            // حساب الطلبات حسب حالة الدفع
+            const paidOrders = snap.docs.filter(doc => doc.data().paymentStatus === 'paid' || doc.data().isPaid === true);
+            
+            // حساب الطلبات حسب الحالة
+            const openOrders = snap.docs.filter(doc => {
+              const status = doc.data().status;
+              return status === 'Received' || status === 'Under Review' || status === 'Preparing' || 
+                     status === 'Shipped' || status === 'Arrived Hub' || status === 'Out for Delivery' ||
+                     status === 'Awaiting Payment';
+            });
+            
+            const closedOrders = snap.docs.filter(doc => {
+              const status = doc.data().status;
+              return status === 'Delivered' || status === 'Cancelled' || status === 'Delivery Failed';
+            });
+            
+            const newOrders = snap.docs.filter(doc => {
+              const status = doc.data().status;
+              return status === 'Received' || status === 'Under Review' || !status;
+            });
             
             newDetailedStats[item.key] = {
               total: snap.size,
               paid: paidOrders.length,
-              pending: pendingOrders.length,
+              open: openOrders.length,
+              closed: closedOrders.length,
               new: newOrders.length,
             };
             
@@ -279,16 +306,6 @@ export default function AdminDashboard() {
     <div className="min-h-screen p-8">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-          {/* Notifications Link */}
-          <Link href="/admin/notifications" title="الإشعارات" className="relative w-10 h-10 flex items-center justify-center rounded-full bg-yellow-500 hover:bg-yellow-600 shadow-lg transition text-white text-xl font-bold">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-            {unreadNotificationsCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full px-2 py-0.5 font-bold shadow animate-pulse">{unreadNotificationsCount}</span>
-            )}
-          </Link>
-
           {/* Support messages icon with unread counter */}
           <Link href="/admin/support-messages" title="رسائل الدعم" className="relative w-10 h-10 flex items-center justify-center rounded-full bg-blue-500 hover:bg-blue-600 shadow-lg transition text-white text-xl font-bold">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-6 h-6">
@@ -370,44 +387,72 @@ export default function AdminDashboard() {
               const trend = trends[item.key] ?? 0;
 
               const cardInner = (
-                <div className={`${item.color} rounded-lg shadow-md p-4 flex flex-col justify-between min-h-[140px] cursor-pointer hover:scale-[1.02] hover:shadow-xl transition-all duration-300 relative overflow-hidden`}>
-                  {/* Badge للطلبات الجديدة */}
-                  {item.badge && details?.new > 0 && (
-                    <div className="absolute top-1.5 right-1.5 bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold shadow animate-pulse">
-                      {item.badge} {details.new}
+                <div 
+                  className={`${item.color} rounded-lg shadow-md p-4 flex flex-col justify-between min-h-[140px] cursor-pointer hover:scale-[1.02] hover:shadow-xl transition-all duration-300 relative overflow-hidden`}
+                  onClick={() => {
+                    if (item.key === 'orders' && details?.new > 0) {
+                      // حفظ عدد الطلبات الجديدة في localStorage
+                      localStorage.setItem('lastSeenOrderCount', details.new.toString());
+                      setLastSeenOrderCount(details.new);
+                      setShowOrderNotification(false);
+                    }
+                  }}
+                >
+                  {/* إشعار الطلبات الجديدة - في وسط البطاقة */}
+                  {item.badge && details?.new > 0 && showOrderNotification && (
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 rounded-lg">
+                      <div className="relative">
+                        {/* الدوائر المتموجة */}
+                        <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75 scale-[2.5]"></div>
+                        <div className="absolute inset-0 bg-yellow-400 rounded-full animate-pulse opacity-50 scale-[2]"></div>
+                        
+                        {/* محتوى الإشعار */}
+                        <div className="relative bg-red-600 text-white px-8 py-6 rounded-3xl font-black shadow-2xl flex flex-col items-center gap-3 border-4 border-white animate-bell-ring">
+                          <span className="text-6xl drop-shadow-2xl animate-wiggle">{item.badge}</span>
+                          <div className="bg-white text-red-600 px-6 py-3 rounded-2xl text-4xl font-black animate-bounce shadow-xl">
+                            {details.new}
+                          </div>
+                          <div className="text-2xl font-extrabold animate-pulse">
+                            طلب جديد!
+                          </div>
+                          <div className="text-sm opacity-80 mt-2">
+                            👆 اضغط للمتابعة
+                          </div>
+                        </div>
+                        
+                        {/* Sparkles حول الإشعار */}
+                        <div className="absolute -top-4 -right-4 text-yellow-300 text-3xl animate-ping">✨</div>
+                        <div className="absolute -top-4 -left-4 text-yellow-300 text-3xl animate-pulse">⭐</div>
+                        <div className="absolute -bottom-4 -right-4 text-yellow-300 text-3xl animate-bounce">💫</div>
+                        <div className="absolute -bottom-4 -left-4 text-yellow-300 text-3xl animate-ping">🌟</div>
+                      </div>
                     </div>
                   )}
 
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="text-3xl font-bold text-white mb-1">{currentStat}</div>
+                      <div className="text-4xl font-bold text-white mb-1">{currentStat}</div>
                       {/* عرض التفاصيل الإضافية */}
                       {details && item.key === 'customers' && (
-                        <div className="text-[10px] text-white/80 space-y-0.5">
+                        <div className="text-xs text-white/80 space-y-0.5">
                           <div>✅ نشط: {details.active}</div>
                           <div>💤 غير نشط: {details.inactive}</div>
                         </div>
                       )}
                       {details && item.key === 'orders' && (
-                        <div className="text-[10px] text-white/80 space-y-0.5">
+                        <div className="text-xs text-white/80 space-y-0.5">
                           <div>💰 مدفوع: {details.paid}</div>
-                          <div>⏳ معلق: {details.pending}</div>
+                          <div>📂 مفتوح: {details.open}</div>
+                          <div>✅ مغلق: {details.closed}</div>
                         </div>
                       )}
                     </div>
                     <div className="text-white/70 scale-75">{item.icon}</div>
                   </div>
 
-                  {/* Mini Chart */}
-                  {item.chartData && (
-                    <div className="mt-2 mb-1.5">
-                      <MiniChart data={item.chartData} color="rgba(255,255,255,0.6)" />
-                    </div>
-                  )}
-
                   <div className="mt-auto">
-                    <div className="text-sm font-bold text-white">{item.labelEn}</div>
-                    <div className="text-xs text-white/80">{item.labelAr}</div>
+                    <div className="text-base font-bold text-white">{item.labelEn}</div>
+                    <div className="text-sm text-white/80">{item.labelAr}</div>
                     
                     {/* Trend Badge */}
                     <div className="mt-1.5">
@@ -450,13 +495,13 @@ export default function AdminDashboard() {
             const dailyStatsIdx = statConfig.findIndex(item => item.key === 'dailyStats');
             // Insert Summary after Daily Stats
             cards.splice(dailyStatsIdx + 1, 0,
-              <Link href="/admin/summary" key="summary" className="bg-gradient-to-br from-green-600 to-green-700 rounded-lg shadow-md p-4 flex flex-col justify-between min-h-[140px] cursor-pointer hover:scale-[1.02] hover:shadow-xl transition-all duration-300">
+              <Link href="/admin/summary" key="summary" className="bg-green-600 rounded-lg shadow-md p-4 flex flex-col justify-between min-h-[140px] cursor-pointer hover:scale-[1.02] hover:shadow-xl transition-all duration-300">
                 <div className="flex items-center justify-between mb-1">
-                  <div className="text-3xl font-bold text-white">📊</div>
+                  <div className="text-4xl font-bold text-white">📊</div>
                 </div>
                 <div className="mt-auto">
-                  <div className="text-sm font-bold text-white">Summary</div>
-                  <div className="text-xs text-white/80">ملخص الإحصائيات</div>
+                  <div className="text-base font-bold text-white">Summary</div>
+                  <div className="text-sm text-white/80">ملخص الإحصائيات</div>
                 </div>
               </Link>
             );
