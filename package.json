@@ -6,9 +6,12 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
-    "lint": "next lint"
+    "lint": "next lint",
+    "init:firebase": "node scripts/initFirebaseCollections.js",
+    "verify:products": "node scripts/verifyProductsCollection.js"
   },
   "dependencies": {
+    "dotenv": "^17.2.3",
     "firebase": "^11.0.0",
     "firebase-admin": "^12.0.0",
     "next": "^14.2.33",

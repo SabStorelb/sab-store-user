@@ -12,12 +12,13 @@ export default function NewProduct() {
   const [descEn, setDescEn] = useState('');
   const [descAr, setDescAr] = useState('');
   const [price, setPrice] = useState(0);
-  const [currency, setCurrency] = useState('SAR');
+  const [currency, setCurrency] = useState('LBP');
   const [stock, setStock] = useState(0);
   const [category, setCategory] = useState('');
   const [subcategory, setSubcategory] = useState('');
   const [brand, setBrand] = useState('');
   const [sizes, setSizes] = useState<string[]>([]);
+  const [ageRange, setAgeRange] = useState<string[]>([]);
   const [deliveryTime, setDeliveryTime] = useState('');
   const [rate, setRate] = useState(0);
   const [available, setAvailable] = useState(true);
@@ -37,6 +38,21 @@ export default function NewProduct() {
     { ar: 'بني', en: 'Brown', hex: '#8B4513' },
   ];
   const [colors, setColors] = useState<{ar: string, en: string, hex: string}[]>([]);
+  const ageOptions = [
+    { ar: '0-6 أشهر', en: '0-6 months' },
+    { ar: '6-12 شهر', en: '6-12 months' },
+    { ar: '1-2 سنة', en: '1-2 years' },
+    { ar: '2-3 سنوات', en: '2-3 years' },
+    { ar: '3-4 سنوات', en: '3-4 years' },
+    { ar: '4-5 سنوات', en: '4-5 years' },
+    { ar: '5-6 سنوات', en: '5-6 years' },
+    { ar: '6-7 سنوات', en: '6-7 years' },
+    { ar: '7-8 سنوات', en: '7-8 years' },
+    { ar: '8-10 سنوات', en: '8-10 years' },
+    { ar: '10-12 سنة', en: '10-12 years' },
+    { ar: '12-14 سنة', en: '12-14 years' },
+    { ar: '14+ سنة', en: '14+ years' },
+  ];
   const [categories, setCategories] = useState<any[]>([]);
   const [subcategories, setSubcategories] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
@@ -95,6 +111,7 @@ export default function NewProduct() {
       subcategory,
       brand,
       sizes,
+      ageRange,
       colors,
       deliveryTime,
       rate,
@@ -143,9 +160,10 @@ export default function NewProduct() {
           <label className="block">
             <div className="text-sm mb-1">العملة - Currency *</div>
             <select value={currency} onChange={e => setCurrency(e.target.value)} required className="w-full border rounded px-3 py-2">
-              <option value="SAR">SAR</option>
-              <option value="USD">USD</option>
-              <option value="EGP">EGP</option>
+              <option value="LBP">ليرة لبنانية (LBP)</option>
+              <option value="USD">دولار أمريكي (USD)</option>
+              <option value="SAR">ريال سعودي (SAR)</option>
+              <option value="EUR">يورو (EUR)</option>
             </select>
           </label>
         </div>
@@ -225,6 +243,27 @@ export default function NewProduct() {
           <div className="flex flex-wrap gap-2">
             {['S','M','L','XL','2XL','3XL','4XL','5XL','6XL'].map(size => (
               <button type="button" key={size} className={`px-3 py-1 rounded border ${sizes.includes(size) ? 'bg-purple-500 text-white' : 'bg-gray-100'}`} onClick={() => handleSizeToggle(size)}>{size}</button>
+            ))}
+          </div>
+        </div>
+        <div className="mt-4">
+          <div className="text-sm mb-1">الفئة العمرية - Age Range (اختياري - للأطفال)</div>
+          <div className="flex flex-wrap gap-2">
+            {ageOptions.map((age, i) => (
+              <button 
+                type="button" 
+                key={i} 
+                className={`px-3 py-1 rounded border text-sm ${ageRange.some(a => a === age.en) ? 'bg-purple-500 text-white' : 'bg-gray-100'}`} 
+                onClick={() => {
+                  if (ageRange.includes(age.en)) {
+                    setAgeRange(ageRange.filter(a => a !== age.en));
+                  } else {
+                    setAgeRange([...ageRange, age.en]);
+                  }
+                }}
+              >
+                {age.ar} | {age.en}
+              </button>
             ))}
           </div>
         </div>
