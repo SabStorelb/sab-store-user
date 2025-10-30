@@ -8,6 +8,7 @@ interface SupportMessage {
   name: string;
   email: string;
   message: string;
+  phone?: string; // إضافة رقم الهاتف
   userId: string | null;
   status: 'pending' | 'replied' | 'closed';
   read: boolean;
@@ -71,37 +72,6 @@ export default function SupportMessagesPage() {
         read: false,
         createdAt: Timestamp.now(),
       });
-
-      // إرسال بريد إلكتروني للعميل
-      try {
-        await fetch('/api/send-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: message.email,
-            subject: 'تحديث حالة رسالة الدعم | Support Status Update',
-            html: `
-              <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
-                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-                  <h1 style="color: white; margin: 0;">تحديث رسالة الدعم</h1>
-                </div>
-                <div style="background-color: white; padding: 30px; border-radius: 0 0 10px 10px;">
-                  <p style="font-size: 18px; color: #333;">مرحباً <strong>${message.name}</strong>،</p>
-                  <p style="font-size: 16px; color: #555; line-height: 1.8;">
-                    تم تحديث حالة رسالتك إلى: <strong style="color: #667eea;">${getStatusText(newStatus)}</strong>
-                  </p>
-                  <p style="font-size: 14px; color: #888; margin-top: 30px;">
-                    شكراً لتواصلك معنا!<br>
-                    فريق الدعم
-                  </p>
-                </div>
-              </div>
-            `,
-          }),
-        });
-      } catch (emailError) {
-        console.error('Error sending email:', emailError);
-      }
     }
   }
 
@@ -125,7 +95,9 @@ export default function SupportMessagesPage() {
 
       // إرسال إشعار للمستخدم (إذا كان لديه userId)
       if (selectedMessage.userId) {
-        await addDoc(collection(firebaseDb, 'userNotifications'), {
+        console.log('📤 إرسال إشعار للمستخدم:', selectedMessage.userId);
+        
+        const notificationData = {
           userId: selectedMessage.userId,
           title: 'رد على رسالة الدعم | Support Reply',
           message: {
@@ -139,52 +111,18 @@ export default function SupportMessagesPage() {
           type: 'support_reply',
           read: false,
           createdAt: Timestamp.now(),
-        });
-      }
-
-      // إرسال البريد الإلكتروني للعميل مع الرد
-      try {
-        await fetch('/api/send-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: selectedMessage.email,
-            subject: 'رد على رسالتك | Support Reply',
-            html: `
-              <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
-                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-                  <h1 style="color: white; margin: 0;">💬 رد على رسالتك</h1>
-                </div>
-                <div style="background-color: white; padding: 30px; border-radius: 0 0 10px 10px;">
-                  <p style="font-size: 18px; color: #333;">مرحباً <strong>${selectedMessage.name}</strong>،</p>
-                  
-                  <div style="background-color: #f0f4ff; padding: 20px; border-radius: 10px; margin: 20px 0; border-right: 4px solid #667eea;">
-                    <p style="font-size: 14px; color: #666; margin: 0 0 10px 0;"><strong>رسالتك:</strong></p>
-                    <p style="font-size: 16px; color: #333; margin: 0;">${selectedMessage.message}</p>
-                  </div>
-                  
-                  <div style="background-color: #e8f5e9; padding: 20px; border-radius: 10px; margin: 20px 0; border-right: 4px solid #4caf50;">
-                    <p style="font-size: 14px; color: #2e7d32; margin: 0 0 10px 0;"><strong>✅ الرد:</strong></p>
-                    <p style="font-size: 16px; color: #333; line-height: 1.8; margin: 0;">${replyText}</p>
-                  </div>
-                  
-                  <p style="font-size: 14px; color: #888; margin-top: 30px;">
-                    إذا كان لديك أي استفسار إضافي، لا تتردد في التواصل معنا مرة أخرى.<br><br>
-                    مع أطيب التحيات،<br>
-                    <strong>فريق الدعم</strong>
-                  </p>
-                </div>
-              </div>
-            `,
-          }),
-        });
+        };
         
-        alert('✅ تم إرسال الرد بنجاح عبر البريد الإلكتروني والإشعارات!');
-      } catch (emailError) {
-        console.error('Error sending email:', emailError);
-        alert('✅ تم حفظ الرد بنجاح! لكن حدث خطأ في إرسال البريد الإلكتروني.');
+        console.log('📝 بيانات الإشعار:', notificationData);
+        
+        const docRef = await addDoc(collection(firebaseDb, 'userNotifications'), notificationData);
+        
+        console.log('✅ تم حفظ الإشعار بنجاح! ID:', docRef.id);
+      } else {
+        console.log('⚠️ لا يوجد userId للرسالة، لن يتم إرسال إشعار');
       }
 
+      alert('✅ تم إرسال الرد بنجاح!\n\n💡 يمكنك الآن إرساله عبر WhatsApp أيضاً من زر واتساب الأخضر.');
       setSelectedMessage(null);
       setReplyText('');
     } catch (error) {
@@ -193,6 +131,24 @@ export default function SupportMessagesPage() {
     } finally {
       setSending(false);
     }
+  }
+
+  // وظيفة إرسال رد عبر WhatsApp
+  function sendWhatsAppReply(message: SupportMessage) {
+    const phone = message.phone || message.email; // استخدم رقم الهاتف إذا كان متوفر
+    const whatsappMessage = `مرحباً *${message.name}*،\n\n` +
+      `شكراً لتواصلك معنا. فيما يلي رد على رسالتك:\n\n` +
+      `📝 *رسالتك:*\n${message.message}\n\n` +
+      `✅ *الرد:*\n${message.reply || 'لم يتم الرد بعد'}\n\n` +
+      `مع أطيب التحيات،\n` +
+      `فريق SAB Store 💚`;
+    
+    // تنظيف رقم الهاتف (إزالة المسافات والرموز)
+    const cleanPhone = phone?.replace(/\D/g, '') || '';
+    
+    // فتح WhatsApp
+    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(whatsappMessage)}`;
+    window.open(whatsappUrl, '_blank');
   }
 
   async function handleDeleteMessage(messageId: string, messageName: string) {
@@ -401,6 +357,20 @@ export default function SupportMessagesPage() {
                         </button>
                       )}
                       
+                      {/* زر WhatsApp - يظهر فقط إذا كان هناك رد */}
+                      {msg.reply && (msg.phone || msg.email) && (
+                        <button
+                          onClick={() => sendWhatsAppReply(msg)}
+                          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold transition-all shadow-sm hover:shadow-md flex items-center gap-2"
+                          title="إرسال عبر WhatsApp"
+                        >
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                          </svg>
+                          واتساب
+                        </button>
+                      )}
+                      
                       <button
                         onClick={() => {
                           setSelectedMessage(msg);
@@ -475,14 +445,31 @@ export default function SupportMessagesPage() {
                   disabled={sending || !replyText.trim()}
                   className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {sending ? '⏳ جارٍ الإرسال...' : '✅ إرسال الرد'}
+                  {sending ? '⏳ جارٍ الحفظ...' : '💾 حفظ الرد'}
                 </button>
+                
+                {/* زر WhatsApp */}
+                {replyText.trim() && (selectedMessage.phone || selectedMessage.email) && (
+                  <button
+                    onClick={() => {
+                      const msg = { ...selectedMessage, reply: replyText };
+                      sendWhatsAppReply(msg);
+                    }}
+                    className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                    </svg>
+                    إرسال واتساب
+                  </button>
+                )}
+                
                 <button
                   onClick={() => {
                     setSelectedMessage(null);
                     setReplyText('');
                   }}
-                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-xl font-bold transition-all"
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-xl font-bold transition-all"
                 >
                   ❌ إلغاء
                 </button>
