@@ -89,11 +89,12 @@ export default function AdminDashboard() {
   }, []);
   const [stats, setStats] = useState<{ [key: string]: number }>({});
   useEffect(() => {
-    async function fetchStats() {
-      const newStats: { [key: string]: number } = {};
+     async function fetchStats() {
+    const newStats: { [key: string]: number } = {};
+
       for (const item of statConfig) {
         if (item.key === 'subcategories') {
-          // special: sum all subcategory collections inside each category
+          // ✅ جمع الأقسام الفرعية داخل كل قسم
           try {
             const categoriesSnap = await getDocs(collection(firebaseDb, 'categories'));
             let subCount = 0;
@@ -107,7 +108,19 @@ export default function AdminDashboard() {
           } catch {
             newStats[item.key] = 0;
           }
+  
+        } else if (item.key === 'customers') {
+          // ✅ تعديل خاص للعملاء: استبعاد المدراء
+          try {
+            const snap = await getDocs(collection(firebaseDb, 'users'));
+            const nonAdmins = snap.docs.filter(doc => !doc.data().isAdmin);
+            newStats[item.key] = nonAdmins.length;
+          } catch {
+            newStats[item.key] = 0;
+          }
+  
         } else {
+          // ✅ باقي الإحصائيات العادية
           try {
             const snap = await getDocs(collection(firebaseDb, item.key));
             newStats[item.key] = snap.size;
