@@ -36,6 +36,7 @@ export default function NewProduct() {
   const [sizes, setSizes] = useState<string[]>([]);
   const [shoeSizes, setShoeSizes] = useState<string[]>([]);
   const [ageRange, setAgeRange] = useState<string[]>([]);
+  const [gender, setGender] = useState<string>(''); // Boy, Girl, Unisex
   const [deliveryTime, setDeliveryTime] = useState('');
   const [rate, setRate] = useState(0);
   const [available, setAvailable] = useState(true);
@@ -366,6 +367,7 @@ export default function NewProduct() {
         shoeSizes,
         ageRange,
         colors,
+        gender, // Boy, Girl, Unisex
         
         // Additional info
         deliveryTime,
@@ -1040,6 +1042,62 @@ export default function NewProduct() {
                   ))}
                 </div>
               </div>
+            </div>
+
+            {/* Gender Selection */}
+            <div className="mb-6">
+              <div className="text-sm font-semibold mb-3 text-gray-700 flex items-center gap-2">
+                <span className="text-xl">👦👧</span>
+                <span>الجنس - Gender (اختياري - للأطفال)</span>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
+                    gender === 'Boy'
+                      ? 'bg-blue-500 text-white border-blue-600 shadow-lg'
+                      : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-md text-gray-700'
+                  }`}
+                  onClick={() => setGender(gender === 'Boy' ? '' : 'Boy')}
+                >
+                  <span className="text-xl">👦</span>
+                  <span>أولاد | Boys</span>
+                </button>
+                
+                <button
+                  type="button"
+                  className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
+                    gender === 'Girl'
+                      ? 'bg-pink-500 text-white border-pink-600 shadow-lg'
+                      : 'bg-white border-gray-200 hover:border-pink-300 hover:shadow-md text-gray-700'
+                  }`}
+                  onClick={() => setGender(gender === 'Girl' ? '' : 'Girl')}
+                >
+                  <span className="text-xl">👧</span>
+                  <span>بنات | Girls</span>
+                </button>
+                
+                <button
+                  type="button"
+                  className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
+                    gender === 'Unisex'
+                      ? 'bg-purple-500 text-white border-purple-600 shadow-lg'
+                      : 'bg-white border-gray-200 hover:border-purple-300 hover:shadow-md text-gray-700'
+                  }`}
+                  onClick={() => setGender(gender === 'Unisex' ? '' : 'Unisex')}
+                >
+                  <span className="text-xl">👶</span>
+                  <span>للجنسين | Unisex</span>
+                </button>
+              </div>
+              
+              {gender && (
+                <div className="mt-3 p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+                  <span className="text-sm font-medium text-purple-800">
+                    ✓ محدد: {gender === 'Boy' ? '👦 أولاد' : gender === 'Girl' ? '👧 بنات' : '👶 للجنسين'}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Age Range */}
