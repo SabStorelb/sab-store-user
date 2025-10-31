@@ -6,3 +6,4 @@ dist/
 coverage/
 /.firebase
 /.expo
+.vercel
