@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { collection, getDocs, onSnapshot, query, Timestamp, where } from 'firebase/firestore';
+import { collection, getDocs, onSnapshot, query, Timestamp, where, QuerySnapshot, DocumentData } from 'firebase/firestore';
 import { firebaseDb } from '../../lib/firebase';
 import { useAdminPermissions } from '../../lib/useAdminPermissions';
 import { AdminPermissions, hasPermission } from '../../lib/permissions';
@@ -283,7 +283,7 @@ export default function AdminDashboard() {
       const sevenDaysAgoTimestamp = Timestamp.fromDate(sevenDaysAgo);
 
       // ⚡ تحميل جميع البيانات بشكل متوازي
-      const dataPromises: Record<string, Promise<any>> = {};
+      const dataPromises: Record<string, Promise<QuerySnapshot<DocumentData>>> = {};
       
       // تحديد البيانات المطلوبة
       const needsCategories = visibleStatConfig.some(item => item.key === 'categories' || item.key === 'subcategories');
@@ -322,7 +322,7 @@ export default function AdminDashboard() {
         })
       );
 
-      const data: Record<string, any> = Object.fromEntries(loadedData);
+      const data: Record<string, QuerySnapshot<DocumentData> | null> = Object.fromEntries(loadedData);
 
       // معالجة البيانات لكل بطاقة
         for (const item of visibleStatConfig) {
@@ -330,7 +330,7 @@ export default function AdminDashboard() {
             try {
               if (data.categories) {
                 const categoriesSnap = data.categories;
-                const subPromises = categoriesSnap.docs.map(async (catDoc: any) => {
+                const subPromises = categoriesSnap.docs.map(async (catDoc) => {
                   try {
                     const subSnap = await getDocs(collection(firebaseDb, 'categories', catDoc.id, 'subcategory'));
                     return subSnap.size;
@@ -351,12 +351,12 @@ export default function AdminDashboard() {
             try {
               if (data.users) {
                 const snap = data.users;
-                const nonAdmins = snap.docs.filter((doc: any) => !doc.data().isAdmin);
+                const nonAdmins = snap.docs.filter((doc) => !doc.data().isAdmin);
                 newStats[item.key] = nonAdmins.length;
                 
                 const thirtyDaysAgo = new Date();
                 thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-                const activeCustomers = nonAdmins.filter((doc: any) => {
+                const activeCustomers = nonAdmins.filter((doc) => {
                   const lastActive = doc.data().lastActive;
                   if (lastActive && lastActive.toDate) {
                     return lastActive.toDate() >= thirtyDaysAgo;
@@ -370,7 +370,7 @@ export default function AdminDashboard() {
                   inactive: nonAdmins.length - activeCustomers.length,
                 };
                 
-                const oldCustomers = nonAdmins.filter((doc: any) => {
+                const oldCustomers = nonAdmins.filter((doc) => {
                   const createdAt = doc.data().createdAt;
                   return createdAt && createdAt.toDate && createdAt.toDate() < sevenDaysAgoTimestamp.toDate();
                 }).length;
@@ -419,7 +419,7 @@ export default function AdminDashboard() {
                   outOfStock,
                 };
 
-                const oldProducts = snap.docs.filter((doc: any) => {
+                const oldProducts = snap.docs.filter((doc) => {
                   const createdAt = doc.data().createdAt;
                   return createdAt && createdAt.toDate && createdAt.toDate() < sevenDaysAgoTimestamp.toDate();
                 }).length;
@@ -450,7 +450,7 @@ export default function AdminDashboard() {
               if (data.suppliers && data.products) {
                 const suppliersSnap = data.suppliers;
                 const productsSnap = data.products;
-                const vendorProducts = productsSnap.docs.filter((doc: any) => {
+                const vendorProducts = productsSnap.docs.filter((doc) => {
                   const productData = doc.data();
                   const vendorId = productData.vendorId || productData.productVendorId || productData.productVendor;
                   return typeof vendorId === 'string' && vendorId.trim().length > 0;
@@ -458,7 +458,7 @@ export default function AdminDashboard() {
 
                 const activeVendors = new Set(
                   vendorProducts
-                    .map((doc: any) => {
+                    .map((doc) => {
                       const productData = doc.data();
                       return (productData.vendorId || productData.productVendorId || productData.productVendor) as string | undefined;
                     })
@@ -473,7 +473,7 @@ export default function AdminDashboard() {
                 };
 
                 // حساب الـ trend بناءً على عدد البائعين (suppliers) وليس منتجاتهم
-                const oldSuppliers = suppliersSnap.docs.filter((doc: any) => {
+                const oldSuppliers = suppliersSnap.docs.filter((doc) => {
                   const createdAt = doc.data().createdAt;
                   return createdAt && createdAt.toDate && createdAt.toDate() < sevenDaysAgoTimestamp.toDate();
                 }).length;
@@ -504,21 +504,21 @@ export default function AdminDashboard() {
                 const snap = data.orders;
                 newStats[item.key] = snap.size;
                 
-                const paidOrders = snap.docs.filter((doc: any) => doc.data().paymentStatus === 'paid' || doc.data().isPaid === true);
-                
-                const openOrders = snap.docs.filter((doc: any) => {
+                const paidOrders = snap.docs.filter((doc) => doc.data().paymentStatus === 'paid' || doc.data().isPaid === true);
+
+                const openOrders = snap.docs.filter((doc) => {
                   const status = doc.data().status;
                   return status === 'Received' || status === 'Under Review' || status === 'Preparing' || 
                          status === 'Shipped' || status === 'Arrived Hub' || status === 'Out for Delivery' ||
                          status === 'Awaiting Payment';
                 });
                 
-                const closedOrders = snap.docs.filter((doc: any) => {
+                const closedOrders = snap.docs.filter((doc) => {
                   const status = doc.data().status;
                   return status === 'Delivered' || status === 'Cancelled' || status === 'Delivery Failed';
                 });
                 
-                const newOrders = snap.docs.filter((doc: any) => {
+                const newOrders = snap.docs.filter((doc) => {
                   const status = doc.data().status;
                   return status === 'Received' || status === 'Under Review' || !status;
                 });
@@ -531,7 +531,7 @@ export default function AdminDashboard() {
                   new: newOrders.length,
                 };
                 
-                const oldOrders = snap.docs.filter((doc: any) => {
+                const oldOrders = snap.docs.filter((doc) => {
                   const createdAt = doc.data().createdAt;
                   return createdAt && createdAt.toDate && createdAt.toDate() < sevenDaysAgoTimestamp.toDate();
                 }).length;
@@ -558,7 +558,7 @@ export default function AdminDashboard() {
               if (targetData) {
                 newStats[item.key] = targetData.size;
                 
-                const oldCount = targetData.docs.filter((doc: any) => {
+                const oldCount = targetData.docs.filter((doc) => {
                   const createdAt = doc.data().createdAt;
                   return createdAt && createdAt.toDate && createdAt.toDate() < sevenDaysAgoTimestamp.toDate();
                 }).length;
