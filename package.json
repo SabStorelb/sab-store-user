@@ -11,6 +11,8 @@
     "verify:products": "node scripts/verifyProductsCollection.js"
   },
   "dependencies": {
+    "@types/cookie": "^0.6.0",
+    "cookie": "^1.0.2",
     "dotenv": "^17.2.3",
     "firebase": "^11.0.0",
     "firebase-admin": "^12.0.0",

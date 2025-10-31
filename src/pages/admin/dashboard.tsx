@@ -346,6 +346,14 @@ export default function AdminDashboard() {
             <span className="hidden md:inline">السجل</span>
           </Link>
 
+          {/* Financial Reports Link */}
+          <Link href="/admin/financial-reports" title="التقارير المالية | Financial Reports" className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            <span className="hidden md:inline">التقارير</span>
+          </Link>
+
           {/* Settings Link */}
           <Link href="/admin/settings" title="الإعدادات | Settings" className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-600 to-slate-600 hover:from-gray-700 hover:to-slate-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
@@ -395,7 +403,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {/* Render stat cards with loading skeleton */}
         {loading ? (
           // عرض Skeletons أثناء التحميل
@@ -423,7 +431,7 @@ export default function AdminDashboard() {
 
               const cardInner = (
                 <div 
-                  className={`${item.color} rounded-xl shadow-lg p-6 flex flex-col justify-between h-[280px] cursor-pointer hover:scale-[1.02] hover:shadow-2xl transition-all duration-300 relative overflow-hidden`}
+                  className={`${item.color} rounded-xl shadow-lg p-4 flex flex-col justify-between h-[200px] cursor-pointer hover:scale-[1.02] hover:shadow-2xl transition-all duration-300 relative overflow-hidden`}
                   onClick={() => {
                     if (item.key === 'orders' && details?.new > 0) {
                       // حفظ عدد الطلبات الجديدة في localStorage
@@ -464,29 +472,29 @@ export default function AdminDashboard() {
                     </div>
                   )}
 
-                  <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
-                      <div className="text-6xl font-black text-white mb-2 drop-shadow-lg">{currentStat}</div>
+                      <div className="text-4xl font-black text-white mb-1 drop-shadow-lg">{currentStat}</div>
                     </div>
-                    <div className="text-white/80">{item.icon}</div>
+                    <div className="text-white/80 scale-75">{item.icon}</div>
                   </div>
 
                   <div className="mt-auto">
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start justify-between gap-3">
                       <div className="flex-1">
-                        <div className="text-xl font-black text-white mb-1">{item.labelEn}</div>
-                        <div className="text-lg font-bold text-white/90 mb-2">{item.labelAr}</div>
+                        <div className="text-base font-black text-white mb-0.5">{item.labelEn}</div>
+                        <div className="text-sm font-bold text-white/90 mb-1">{item.labelAr}</div>
                       </div>
                       
                       {/* عرض التفاصيل بجانب النص */}
                       {details && item.key === 'customers' && (
-                        <div className="text-sm text-white/90 space-y-1 font-semibold text-right">
+                        <div className="text-xs text-white/90 space-y-0.5 font-semibold text-right">
                           <div>✅ نشط: {details.active}</div>
                           <div>💤 غير نشط: {details.inactive}</div>
                         </div>
                       )}
                       {details && item.key === 'orders' && (
-                        <div className="text-sm text-white/90 space-y-1 font-semibold text-right">
+                        <div className="text-xs text-white/90 space-y-0.5 font-semibold text-right">
                           <div>💰 مدفوع: {details.paid}</div>
                           <div>📂 مفتوح: {details.open}</div>
                           <div>✅ مغلق: {details.closed}</div>
@@ -495,7 +503,7 @@ export default function AdminDashboard() {
                     </div>
                     
                     {/* Trend Badge */}
-                    <div className="mt-2">
+                    <div className="mt-1.5">
                       <TrendBadge value={trend} />
                     </div>
                   </div>
@@ -508,7 +516,7 @@ export default function AdminDashboard() {
                         e.stopPropagation();
                         setSelectedModal({ type: item.key, title: item.labelAr });
                       }}
-                      className="mt-3 w-full bg-white/20 hover:bg-white/40 text-white text-base py-3 rounded-lg transition-all font-bold backdrop-blur-sm border-2 border-white/30 hover:border-white/60"
+                      className="mt-2 w-full bg-white/20 hover:bg-white/40 text-white text-sm py-2 rounded-lg transition-all font-bold backdrop-blur-sm border-2 border-white/30 hover:border-white/60"
                     >
                       🔍 عرض التفاصيل
                     </button>
