@@ -83,8 +83,10 @@ export default function VendorSystemPage() {
 
   useEffect(() => {
   const unsubscribe = onSnapshot(collection(firebaseDb, 'suppliers'), (snapshot) => {
+      console.log('🔍 Suppliers loaded from Firestore:', snapshot.size, 'documents');
       const loaded: VendorRecord[] = snapshot.docs.map((docSnap) => {
         const data = docSnap.data() as Record<string, unknown>;
+        console.log('📦 Supplier:', { id: docSnap.id, name: data.name, nameAr: data.nameAr, company: data.company });
         const resolvedNameAr = (data.nameAr as string) || (data.name as string) || (data.company as string) || 'بائع بدون اسم';
         const resolvedNameEn = (data.name as string) || resolvedNameAr;
         return {

@@ -472,15 +472,16 @@ export default function AdminDashboard() {
                   activeVendors,
                 };
 
-                const oldVendorProducts = vendorProducts.filter((doc: any) => {
+                // حساب الـ trend بناءً على عدد البائعين (suppliers) وليس منتجاتهم
+                const oldSuppliers = suppliersSnap.docs.filter((doc: any) => {
                   const createdAt = doc.data().createdAt;
                   return createdAt && createdAt.toDate && createdAt.toDate() < sevenDaysAgoTimestamp.toDate();
                 }).length;
-                const newVendorProducts = vendorProducts.length - oldVendorProducts;
-                if (oldVendorProducts > 0) {
-                  newTrends[item.key] = Math.round((newVendorProducts / oldVendorProducts) * 100);
+                const newSuppliers = suppliersSnap.size - oldSuppliers;
+                if (oldSuppliers > 0) {
+                  newTrends[item.key] = Math.round((newSuppliers / oldSuppliers) * 100);
                 } else {
-                  newTrends[item.key] = newVendorProducts > 0 ? 100 : 0;
+                  newTrends[item.key] = newSuppliers > 0 ? 100 : 0;
                 }
               } else {
                 newStats[item.key] = 0;
