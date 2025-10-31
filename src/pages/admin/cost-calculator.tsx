@@ -1,7 +1,30 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import type { ChangeEvent } from 'react';
 import { useRouter } from 'next/router';
 import { firebaseAuth, firebaseDb } from '../../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+
+type InputField = {
+  key: 'purchasePrice' | 'profitMargin' | 'shippingCost' | 'deliveryCost';
+  icon: string;
+  label: string;
+  labelEn: string;
+  description: string;
+  placeholder?: string;
+  value: number;
+  min?: number;
+  max?: number;
+  step?: number;
+  required?: boolean;
+  type: 'currency' | 'percentage';
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+};
+
+type InputSection = {
+  title: string;
+  subtitle: string;
+  fields: InputField[];
+};
 
 export default function CostCalculator() {
   const router = useRouter();
@@ -61,6 +84,152 @@ export default function CostCalculator() {
     const calculated = totalCost * (1 + profitMargin / 100);
     setFinalPrice(Number(calculated.toFixed(2)));
   }, [purchasePrice, profitMargin, shippingCost, deliveryCost]);
+
+  const createNumericHandler = useCallback(
+    (setter: (value: number) => void) =>
+      (event: ChangeEvent<HTMLInputElement>) => {
+        const parsed = Number(event.target.value);
+        setter(Number.isNaN(parsed) ? 0 : parsed);
+      },
+    [],
+  );
+
+  const currencyFormatter = useMemo(
+    () => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }),
+    [],
+  );
+
+  const formatCurrency = useCallback(
+    (value: number) => currencyFormatter.format(value || 0),
+    [currencyFormatter],
+  );
+
+  const totalCost = useMemo(
+    () => purchasePrice + shippingCost + deliveryCost,
+    [purchasePrice, shippingCost, deliveryCost],
+  );
+
+  const profitAmount = useMemo(
+    () => totalCost * (profitMargin / 100),
+    [totalCost, profitMargin],
+  );
+
+  const netProfit = useMemo(() => finalPrice - totalCost, [finalPrice, totalCost]);
+
+  const profitShare = useMemo(
+    () => (finalPrice > 0 ? Math.min(100, Math.max(0, (profitAmount / finalPrice) * 100)) : 0),
+    [profitAmount, finalPrice],
+  );
+
+  const hasInputs = purchasePrice > 0 || shippingCost > 0 || deliveryCost > 0 || profitMargin > 0;
+
+  const inputSections: InputSection[] = useMemo(
+    () => [
+      {
+        title: 'التكاليف الأساسية',
+        subtitle: 'أدخل كل ما تدفعه فعلياً للحصول على المنتج وتسليمه.',
+        fields: [
+          {
+            key: 'purchasePrice',
+            icon: '💵',
+            label: 'سعر الشراء',
+            labelEn: 'Purchase Price',
+            description: 'السعر الذي دفعتَه للمورد مقابل المنتج الواحد.',
+            placeholder: '0.00',
+            value: purchasePrice,
+            min: 0,
+            step: 0.01,
+            required: true,
+            type: 'currency',
+            onChange: createNumericHandler(setPurchasePrice),
+          },
+          {
+            key: 'shippingCost',
+            icon: '📦',
+            label: 'كلفة الشحن',
+            labelEn: 'Shipping Cost',
+            description: 'تكلفة شحن المنتج من المورد أو المخزن.',
+            placeholder: '0.00',
+            value: shippingCost,
+            min: 0,
+            step: 0.01,
+            type: 'currency',
+            onChange: createNumericHandler(setShippingCost),
+          },
+          {
+            key: 'deliveryCost',
+            icon: '🚚',
+            label: 'كلفة التوصيل',
+            labelEn: 'Delivery Cost',
+            description: 'تكلفة إيصال المنتج إلى العميل النهائي.',
+            placeholder: '0.00',
+            value: deliveryCost,
+            min: 0,
+            step: 0.01,
+            type: 'currency',
+            onChange: createNumericHandler(setDeliveryCost),
+          },
+        ],
+      },
+      {
+        title: 'إستراتيجية التسعير',
+        subtitle: 'حدد نسبة الربح المناسبة قبل مشاركة السعر مع الفريق.',
+        fields: [
+          {
+            key: 'profitMargin',
+            icon: '📈',
+            label: 'نسبة الربح %',
+            labelEn: 'Profit Margin %',
+            description: 'مثال: 40 يعني أنك تريد ربح 40٪ فوق التكلفة.',
+            placeholder: '10',
+            value: profitMargin,
+            min: 0,
+            max: 1000,
+            step: 1,
+            type: 'percentage',
+            onChange: createNumericHandler(setProfitMargin),
+          },
+        ],
+      },
+    ],
+    [
+      purchasePrice,
+      shippingCost,
+      deliveryCost,
+      profitMargin,
+      createNumericHandler,
+    ],
+  );
+
+  const summaryStats = useMemo(
+    () => [
+      {
+        key: 'totalCost' as const,
+        title: 'إجمالي التكلفة',
+        hint: 'سعر الشراء + الشحن + التوصيل',
+        value: formatCurrency(totalCost),
+      },
+      {
+        key: 'profitMargin' as const,
+        title: 'نسبة الربح',
+        hint: 'النسبة التي سيتم إضافتها فوق التكلفة الكاملة',
+        value: `${profitMargin.toFixed(0)}%`,
+      },
+      {
+        key: 'profitAmount' as const,
+        title: 'قيمة الربح',
+        hint: 'المبلغ الذي ستحصل عليه قبل المصاريف الإضافية',
+        value: formatCurrency(profitAmount),
+      },
+      {
+        key: 'netProfit' as const,
+        title: 'صافي الربح المتوقع',
+        hint: 'الفرق بين السعر النهائي و إجمالي التكلفة',
+        value: formatCurrency(netProfit),
+      },
+    ],
+    [formatCurrency, netProfit, profitAmount, profitMargin, totalCost],
+  );
 
   const handleCopyPrice = () => {
     navigator.clipboard.writeText(finalPrice.toString());
