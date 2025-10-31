@@ -40,7 +40,7 @@ export default function EditProduct() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [rate, setRate] = useState(0);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [reviewsCount, setReviewsCount] = useState(0);
+  const [reviewsCount, setReviewsCount] = useState('');
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [available, setAvailable] = useState(true);
   
@@ -1127,12 +1127,11 @@ export default function EditProduct() {
                   <span>عدد المراجعات - Reviews Count</span>
                 </div>
                 <input
-                  type="number"
-                  min={0}
+                  type="text"
                   value={reviewsCount}
-                  onChange={e => setReviewsCount(Number(e.target.value))}
+                  onChange={e => setReviewsCount(e.target.value)}
                   className="w-full border-2 border-gray-200 rounded-xl px-4 py-3.5 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-200 outline-none"
-                  placeholder="0"
+                  placeholder="0, 5k, 1.2k, New..."
                 />
               </label>
             </div>
