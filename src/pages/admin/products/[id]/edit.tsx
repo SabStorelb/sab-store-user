@@ -796,6 +796,452 @@ export default function EditProduct() {
           )}
         </div>
 
+        {/* Section 5: Sizes, Gender, Season */}
+        <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border-2 border-orange-100 mb-6">
+          <div className="flex items-center gap-3 mb-6 pb-4 border-b-2 border-orange-100">
+            <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-lg">
+              5
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800">📏 المقاسات والفئة العمرية</h2>
+              <p className="text-sm text-gray-500">اختر المقاسات والفئة العمرية المناسبة</p>
+            </div>
+          </div>
+          
+          {/* Clothing Sizes */}
+          <div className="mb-6">
+            <div className="text-sm font-semibold mb-3 text-gray-700 flex items-center gap-2">
+              <span className="text-xl">👕</span>
+              <span>مقاسات الملابس - Clothing Sizes (اختياري)</span>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {['S','M','L','XL','2XL','3XL','4XL','5XL','6XL'].map(size => (
+                <button
+                  type="button"
+                  key={size}
+                  className={`px-5 py-2.5 rounded-xl border-2 font-bold transition-all duration-200 transform hover:scale-105 ${
+                    sizes.includes(size)
+                      ? 'bg-orange-500 text-white border-orange-600 shadow-lg'
+                      : 'bg-white border-gray-200 hover:border-orange-300 hover:shadow-md text-gray-700'
+                  }`}
+                  onClick={() => handleSizeToggle(size)}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Shoe Sizes */}
+          <div className="mb-6">
+            <div className="text-sm font-semibold mb-3 text-gray-700 flex items-center gap-2">
+              <span className="text-xl">👟</span>
+              <span>مقاسات الأحذية - Shoe Sizes (اختياري)</span>
+            </div>
+            
+            {/* Kids */}
+            <div className="mb-4">
+              <p className="text-xs font-medium text-gray-600 mb-2">👶 أطفال - Kids</p>
+              <div className="flex flex-wrap gap-2">
+                {['17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32','33','34','35'].map(size => (
+                  <button
+                    type="button"
+                    key={`kid-${size}`}
+                    className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                      shoeSizes.includes(size)
+                        ? 'bg-orange-500 text-white border-orange-600'
+                        : 'bg-white border-gray-200 hover:border-orange-300 text-gray-700'
+                    }`}
+                    onClick={() => handleShoeSizeToggle(size)}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Women */}
+            <div className="mb-4">
+              <p className="text-xs font-medium text-gray-600 mb-2">👠 نساء - Women</p>
+              <div className="flex flex-wrap gap-2">
+                {['35','36','37','38','39','40','41','42'].map(size => (
+                  <button
+                    type="button"
+                    key={`women-${size}`}
+                    className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                      shoeSizes.includes(size)
+                        ? 'bg-pink-500 text-white border-pink-600'
+                        : 'bg-white border-gray-200 hover:border-pink-300 text-gray-700'
+                    }`}
+                    onClick={() => handleShoeSizeToggle(size)}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Men */}
+            <div>
+              <p className="text-xs font-medium text-gray-600 mb-2">👞 رجال - Men</p>
+              <div className="flex flex-wrap gap-2">
+                {['38','39','40','41','42','43','44','45','46','47','48'].map(size => (
+                  <button
+                    type="button"
+                    key={`men-${size}`}
+                    className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                      shoeSizes.includes(size)
+                        ? 'bg-blue-500 text-white border-blue-600'
+                        : 'bg-white border-gray-200 hover:border-blue-300 text-gray-700'
+                    }`}
+                    onClick={() => handleShoeSizeToggle(size)}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Age Range */}
+          <div className="mb-6">
+            <div className="text-sm font-semibold mb-3 text-gray-700 flex items-center gap-2">
+              <span className="text-xl">👶</span>
+              <span>الفئة العمرية - Age Range (اختياري)</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {ageOptions.map(age => (
+                <button
+                  type="button"
+                  key={age.en}
+                  className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                    ageRange.includes(age.en)
+                      ? 'bg-purple-500 text-white border-purple-600'
+                      : 'bg-white border-gray-200 hover:border-purple-300 text-gray-700'
+                  }`}
+                  onClick={() => handleAgeRangeToggle(age.en)}
+                >
+                  {age.ar} | {age.en}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Gender Selection */}
+          <div className="mb-6">
+            <div className="text-sm font-semibold mb-3 text-gray-700 flex items-center gap-2">
+              <span className="text-xl">👦👧</span>
+              <span>الجنس - Gender (اختياري)</span>
+            </div>
+            
+            {/* Kids Gender */}
+            <div className="mb-4">
+              <p className="text-xs font-medium text-gray-600 mb-2">👶 للأطفال - Kids</p>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
+                    gender === 'Boy'
+                      ? 'bg-blue-500 text-white border-blue-600 shadow-lg'
+                      : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-md text-gray-700'
+                  }`}
+                  onClick={() => setGender(gender === 'Boy' ? '' : 'Boy')}
+                >
+                  <span className="text-xl">👦</span>
+                  <span>أولاد | Boys</span>
+                </button>
+                
+                <button
+                  type="button"
+                  className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
+                    gender === 'Girl'
+                      ? 'bg-pink-500 text-white border-pink-600 shadow-lg'
+                      : 'bg-white border-gray-200 hover:border-pink-300 hover:shadow-md text-gray-700'
+                  }`}
+                  onClick={() => setGender(gender === 'Girl' ? '' : 'Girl')}
+                >
+                  <span className="text-xl">👧</span>
+                  <span>بنات | Girls</span>
+                </button>
+                
+                <button
+                  type="button"
+                  className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
+                    gender === 'Unisex-Kids'
+                      ? 'bg-purple-500 text-white border-purple-600 shadow-lg'
+                      : 'bg-white border-gray-200 hover:border-purple-300 hover:shadow-md text-gray-700'
+                  }`}
+                  onClick={() => setGender(gender === 'Unisex-Kids' ? '' : 'Unisex-Kids')}
+                >
+                  <span className="text-xl">👶</span>
+                  <span>للجنسين (أطفال) | Unisex Kids</span>
+                </button>
+              </div>
+            </div>
+            
+            {/* Adults Gender */}
+            <div>
+              <p className="text-xs font-medium text-gray-600 mb-2">👨👩 للكبار - Adults</p>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
+                    gender === 'Men'
+                      ? 'bg-indigo-500 text-white border-indigo-600 shadow-lg'
+                      : 'bg-white border-gray-200 hover:border-indigo-300 hover:shadow-md text-gray-700'
+                  }`}
+                  onClick={() => setGender(gender === 'Men' ? '' : 'Men')}
+                >
+                  <span className="text-xl">👨</span>
+                  <span>رجال | Men</span>
+                </button>
+                
+                <button
+                  type="button"
+                  className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
+                    gender === 'Women'
+                      ? 'bg-rose-500 text-white border-rose-600 shadow-lg'
+                      : 'bg-white border-gray-200 hover:border-rose-300 hover:shadow-md text-gray-700'
+                  }`}
+                  onClick={() => setGender(gender === 'Women' ? '' : 'Women')}
+                >
+                  <span className="text-xl">👩</span>
+                  <span>نساء | Women</span>
+                </button>
+                
+                <button
+                  type="button"
+                  className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
+                    gender === 'Unisex'
+                      ? 'bg-teal-500 text-white border-teal-600 shadow-lg'
+                      : 'bg-white border-gray-200 hover:border-teal-300 hover:shadow-md text-gray-700'
+                  }`}
+                  onClick={() => setGender(gender === 'Unisex' ? '' : 'Unisex')}
+                >
+                  <span className="text-xl">🧑</span>
+                  <span>للجنسين (كبار) | Unisex Adults</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Season Selection */}
+          <div className="mb-6">
+            <div className="text-sm font-semibold mb-3 text-gray-700 flex items-center gap-2">
+              <span className="text-xl">🌞❄️</span>
+              <span>الموسم - Season (اختياري)</span>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
+                  season === 'Summer'
+                    ? 'bg-yellow-500 text-white border-yellow-600 shadow-lg'
+                    : 'bg-white border-gray-200 hover:border-yellow-300 hover:shadow-md text-gray-700'
+                }`}
+                onClick={() => setSeason(season === 'Summer' ? '' : 'Summer')}
+              >
+                <span className="text-xl">☀️</span>
+                <span>صيفي | Summer</span>
+              </button>
+              
+              <button
+                type="button"
+                className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
+                  season === 'Winter'
+                    ? 'bg-cyan-500 text-white border-cyan-600 shadow-lg'
+                    : 'bg-white border-gray-200 hover:border-cyan-300 hover:shadow-md text-gray-700'
+                }`}
+                onClick={() => setSeason(season === 'Winter' ? '' : 'Winter')}
+              >
+                <span className="text-xl">❄️</span>
+                <span>شتوي | Winter</span>
+              </button>
+              
+              <button
+                type="button"
+                className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
+                  season === 'All-Season'
+                    ? 'bg-green-500 text-white border-green-600 shadow-lg'
+                    : 'bg-white border-gray-200 hover:border-green-300 hover:shadow-md text-gray-700'
+                }`}
+                onClick={() => setSeason(season === 'All-Season' ? '' : 'All-Season')}
+              >
+                <span className="text-xl">🌈</span>
+                <span>كل المواسم | All Season</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 6: Additional Info */}
+        <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border-2 border-indigo-100 mb-6">
+          <div className="flex items-center gap-3 mb-6 pb-4 border-b-2 border-indigo-100">
+            <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-lg">
+              6
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800">⚙️ معلومات إضافية</h2>
+              <p className="text-sm text-gray-500">زمن التوصيل، التقييم والحالة</p>
+            </div>
+          </div>
+          
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <label className="block">
+                <div className="text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+                  <span className="text-xl">🚚</span>
+                  <span>زمن التوصيل - Delivery Time</span>
+                </div>
+                <input
+                  value={deliveryTime}
+                  onChange={e => setDeliveryTime(e.target.value)}
+                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-3.5 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-200 outline-none"
+                  placeholder="مثال: 2-3 أيام | Example: 2-3 days"
+                />
+              </label>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block">
+                <div className="text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+                  <span className="text-xl">⭐</span>
+                  <span>التقييم - Rate (0-5)</span>
+                </div>
+                <input
+                  type="number"
+                  min={0}
+                  max={5}
+                  step={0.1}
+                  value={rate}
+                  onChange={e => setRate(Number(e.target.value))}
+                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-3.5 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-200 outline-none"
+                />
+              </label>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block">
+                <div className="text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+                  <span className="text-xl">💬</span>
+                  <span>عدد المراجعات - Reviews Count</span>
+                </div>
+                <input
+                  type="number"
+                  min={0}
+                  value={reviewsCount}
+                  onChange={e => setReviewsCount(Number(e.target.value))}
+                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-3.5 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-200 outline-none"
+                  placeholder="0"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* Material & Care Instructions */}
+          <div className="grid sm:grid-cols-2 gap-6 mt-6">
+            <div className="space-y-2">
+              <label className="block">
+                <div className="text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+                  <span className="text-xl">🧵</span>
+                  <span>الخامة - Material</span>
+                </div>
+                <input
+                  value={material}
+                  onChange={e => setMaterial(e.target.value)}
+                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-3.5 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-200 outline-none"
+                  placeholder="مثال: 100% Cotton | 63% Polyester, 36% Rayon"
+                />
+              </label>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block">
+                <div className="text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+                  <span className="text-xl">🧼</span>
+                  <span>تعليمات الغسيل - Care Instructions</span>
+                </div>
+                <input
+                  value={careInstructions}
+                  onChange={e => setCareInstructions(e.target.value)}
+                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-3.5 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-200 outline-none"
+                  placeholder="مثال: غسيل آلي | Machine Wash"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* Features Section */}
+          <div className="space-y-4 mt-6">
+            <div className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <span className="text-xl">✨</span>
+              <span>المميزات - Features (مثل Amazon)</span>
+            </div>
+            
+            <div className="flex gap-2">
+              <input
+                value={currentFeature}
+                onChange={e => setCurrentFeature(e.target.value)}
+                onKeyPress={e => e.key === 'Enter' && (e.preventDefault(), handleAddFeature())}
+                className="flex-1 border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-200 outline-none"
+                placeholder="أضف ميزة للمنتج... | Add a feature..."
+              />
+              <button
+                type="button"
+                onClick={handleAddFeature}
+                className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-6 py-3 rounded-xl font-bold hover:shadow-xl transition-all duration-200"
+              >
+                ➕ إضافة
+              </button>
+            </div>
+
+            {features.length > 0 && (
+              <div className="space-y-2">
+                {features.map((feature, index) => (
+                  <div key={index} className="flex items-center gap-3 bg-indigo-50 border-2 border-indigo-200 rounded-xl px-4 py-3">
+                    <span className="text-indigo-600">•</span>
+                    <span className="flex-1 text-gray-700">{feature}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveFeature(index)}
+                      className="text-red-500 hover:text-red-700 font-bold"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="text-xs text-gray-500 mt-2">
+              💡 مثال: &quot;Premium soft-touch fabric&quot;, &quot;Suitable for men and women&quot;, &quot;Available in multiple sizes&quot;
+            </div>
+          </div>
+
+          {/* Available & Featured Checkboxes */}
+          <div className="space-y-4 mt-6">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={available}
+                onChange={e => setAvailable(e.target.checked)}
+                className="w-6 h-6 rounded-lg border-2 border-gray-300 text-indigo-600 focus:ring-4 focus:ring-indigo-100 cursor-pointer"
+              />
+              <span className="font-semibold text-gray-700">متوفر - Available</span>
+            </label>
+            
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={featured}
+                onChange={e => setFeatured(e.target.checked)}
+                className="w-6 h-6 rounded-lg border-2 border-gray-300 text-indigo-600 focus:ring-4 focus:ring-indigo-100 cursor-pointer"
+              />
+              <span className="font-semibold text-gray-700">منتج مميز - Featured</span>
+            </label>
+          </div>
+        </div>
+
         {/* Existing Images */}
         {existingImages.length > 0 && (
           <div className="mb-6">
