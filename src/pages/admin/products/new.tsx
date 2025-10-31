@@ -59,9 +59,18 @@ export default function NewProduct() {
     { ar: 'بنفسجي', en: 'Purple', hex: '#B10DC9' },
     { ar: 'وردي', en: 'Pink', hex: '#F012BE' },
     { ar: 'بني', en: 'Brown', hex: '#8B4513' },
+    { ar: 'بيج', en: 'Beige', hex: '#F5F5DC' },
+    { ar: 'فضي', en: 'Silver', hex: '#C0C0C0' },
+    { ar: 'ذهبي', en: 'Gold', hex: '#FFD700' },
+    { ar: 'كحلي', en: 'Navy', hex: '#000080' },
+    { ar: 'سماوي', en: 'Sky Blue', hex: '#87CEEB' },
   ];
   
   const [colors, setColors] = useState<{ar: string, en: string, hex: string}[]>([]);
+  const [customColorAr, setCustomColorAr] = useState('');
+  const [customColorEn, setCustomColorEn] = useState('');
+  const [customColorHex, setCustomColorHex] = useState('#000000');
+  const [showCustomColorForm, setShowCustomColorForm] = useState(false);
   
   const ageOptions = [
     { ar: '0-6 أشهر', en: '0-6 months' },
@@ -139,6 +148,30 @@ export default function NewProduct() {
 
   function handleSizeToggle(size: string) {
     setSizes(prev => prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size]);
+  }
+
+  function handleAddCustomColor() {
+    if (!customColorAr.trim() || !customColorEn.trim()) {
+      alert('الرجاء إدخال اسم اللون بالعربية والإنجليزية');
+      return;
+    }
+    
+    const newColor = {
+      ar: customColorAr.trim(),
+      en: customColorEn.trim(),
+      hex: customColorHex
+    };
+    
+    // Add to selected colors
+    setColors([...colors, newColor]);
+    
+    // Reset form
+    setCustomColorAr('');
+    setCustomColorEn('');
+    setCustomColorHex('#000000');
+    setShowCustomColorForm(false);
+    
+    console.log('✅ تم إضافة اللون المخصص:', newColor);
   }
 
   // Compress image before upload
@@ -777,7 +810,106 @@ export default function NewProduct() {
                   <span className="font-medium">{c.ar} | {c.en}</span>
                 </button>
               ))}
+              
+              {/* زر إضافة لون مخصص */}
+              <button
+                type="button"
+                onClick={() => setShowCustomColorForm(!showCustomColorForm)}
+                className="px-4 py-2.5 rounded-xl border-2 border-dashed border-purple-300 bg-purple-50 hover:bg-purple-100 text-purple-700 font-medium transition-all duration-200 transform hover:scale-105 flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span>إضافة لون مخصص</span>
+              </button>
             </div>
+
+            {/* نموذج إضافة لون مخصص */}
+            {showCustomColorForm && (
+              <div className="mt-4 p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border-2 border-purple-200 animate-fade-in">
+                <div className="flex items-center gap-2 mb-4">
+                  <svg className="w-5 h-5 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                  </svg>
+                  <h3 className="text-lg font-bold text-purple-800">إضافة لون جديد</h3>
+                </div>
+                
+                <div className="grid md:grid-cols-3 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      الاسم بالعربية *
+                    </label>
+                    <input
+                      type="text"
+                      value={customColorAr}
+                      onChange={(e) => setCustomColorAr(e.target.value)}
+                      placeholder="مثال: بيج"
+                      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      الاسم بالإنجليزية *
+                    </label>
+                    <input
+                      type="text"
+                      value={customColorEn}
+                      onChange={(e) => setCustomColorEn(e.target.value)}
+                      placeholder="Example: Beige"
+                      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      اختر اللون *
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="color"
+                        value={customColorHex}
+                        onChange={(e) => setCustomColorHex(e.target.value)}
+                        className="h-11 w-20 rounded-lg cursor-pointer border-2 border-gray-200"
+                      />
+                      <input
+                        type="text"
+                        value={customColorHex}
+                        onChange={(e) => setCustomColorHex(e.target.value)}
+                        placeholder="#000000"
+                        className="flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={handleAddCustomColor}
+                    className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg hover:from-purple-700 hover:to-pink-700 font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    إضافة اللون
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCustomColorForm(false);
+                      setCustomColorAr('');
+                      setCustomColorEn('');
+                      setCustomColorHex('#000000');
+                    }}
+                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-all"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              </div>
+            )}
 
             {colors.length > 0 && (
               <div className="mt-6 p-4 bg-purple-50 rounded-xl border border-purple-200">
@@ -787,6 +919,15 @@ export default function NewProduct() {
                     <span key={i} className="bg-white rounded-lg px-3 py-2 text-sm font-medium flex items-center gap-2 shadow-sm border border-purple-100">
                       <span style={{background: c.hex, borderRadius: '50%', width: 20, height: 20, display: 'inline-block', border: c.hex === '#FFFFFF' ? '2px solid #ddd' : '2px solid rgba(0,0,0,0.1)'}}></span>
                       {c.ar} | {c.en}
+                      <button
+                        type="button"
+                        onClick={() => setColors(colors.filter((_, idx) => idx !== i))}
+                        className="ml-1 text-red-500 hover:text-red-700 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
                     </span>
                   ))}
                 </div>
