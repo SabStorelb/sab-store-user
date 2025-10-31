@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import ProtectedPage from '../../components/ProtectedPage';
+import Image from 'next/image';
 import { useAdminPermissions } from '../../lib/useAdminPermissions';
 
 interface StoreSettings {
@@ -70,6 +70,7 @@ export default function StoreSettings() {
 
   useEffect(() => {
     fetchSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function fetchSettings() {
@@ -225,7 +226,15 @@ export default function StoreSettings() {
               <label className="block text-sm font-bold mb-2">الشعار | Logo</label>
               <div className="flex items-center gap-4">
                 {logoPreview && (
-                  <img src={logoPreview} alt="Logo" className="w-20 h-20 object-contain border rounded" />
+                  <div className="relative w-20 h-20">
+                    <Image 
+                      src={logoPreview} 
+                      alt="Logo" 
+                      width={80}
+                      height={80}
+                      className="object-contain border rounded" 
+                    />
+                  </div>
                 )}
                 <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
                   اختر صورة

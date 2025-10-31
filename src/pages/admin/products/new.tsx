@@ -33,6 +33,7 @@ export default function NewProduct() {
   const [subcategory, setSubcategory] = useState('');
   const [brand, setBrand] = useState('');
   const [sizes, setSizes] = useState<string[]>([]);
+  const [shoeSizes, setShoeSizes] = useState<string[]>([]);
   const [ageRange, setAgeRange] = useState<string[]>([]);
   const [deliveryTime, setDeliveryTime] = useState('');
   const [rate, setRate] = useState(0);
@@ -361,6 +362,7 @@ export default function NewProduct() {
         
         // Variants
         sizes,
+        shoeSizes,
         ageRange,
         colors,
         
@@ -839,7 +841,7 @@ export default function NewProduct() {
             <div className="mb-6">
               <div className="text-sm font-semibold mb-3 text-gray-700 flex items-center gap-2">
                 <span className="text-xl">👕</span>
-                <span>المقاسات - Sizes (اختياري)</span>
+                <span>مقاسات الملابس - Clothing Sizes (اختياري)</span>
               </div>
               <div className="flex flex-wrap gap-3">
                 {['S','M','L','XL','2XL','3XL','4XL','5XL','6XL'].map(size => (
@@ -856,6 +858,77 @@ export default function NewProduct() {
                     {size}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Shoe Sizes */}
+            <div className="mb-6">
+              <div className="text-sm font-semibold mb-3 text-gray-700 flex items-center gap-2">
+                <span className="text-xl">👟</span>
+                <span>مقاسات الأحذية - Shoe Sizes (اختياري)</span>
+              </div>
+              
+              {/* أطفال */}
+              <div className="mb-4">
+                <p className="text-xs font-medium text-gray-600 mb-2">👶 أطفال - Kids</p>
+                <div className="flex flex-wrap gap-2">
+                  {['17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32','33','34','35'].map(size => (
+                    <button
+                      type="button"
+                      key={`kid-${size}`}
+                      className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                        shoeSizes.includes(size)
+                          ? 'bg-orange-500 text-white border-orange-600'
+                          : 'bg-white border-gray-200 hover:border-orange-300 text-gray-700'
+                      }`}
+                      onClick={() => setShoeSizes(prev => prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size])}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* نساء */}
+              <div className="mb-4">
+                <p className="text-xs font-medium text-gray-600 mb-2">👠 نساء - Women</p>
+                <div className="flex flex-wrap gap-2">
+                  {['35','36','37','38','39','40','41','42'].map(size => (
+                    <button
+                      type="button"
+                      key={`women-${size}`}
+                      className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                        shoeSizes.includes(size)
+                          ? 'bg-pink-500 text-white border-pink-600'
+                          : 'bg-white border-gray-200 hover:border-pink-300 text-gray-700'
+                      }`}
+                      onClick={() => setShoeSizes(prev => prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size])}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* رجال */}
+              <div>
+                <p className="text-xs font-medium text-gray-600 mb-2">👞 رجال - Men</p>
+                <div className="flex flex-wrap gap-2">
+                  {['38','39','40','41','42','43','44','45','46','47','48'].map(size => (
+                    <button
+                      type="button"
+                      key={`men-${size}`}
+                      className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                        shoeSizes.includes(size)
+                          ? 'bg-blue-500 text-white border-blue-600'
+                          : 'bg-white border-gray-200 hover:border-blue-300 text-gray-700'
+                      }`}
+                      onClick={() => setShoeSizes(prev => prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size])}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
