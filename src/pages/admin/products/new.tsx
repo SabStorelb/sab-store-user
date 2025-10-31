@@ -43,6 +43,13 @@ export default function NewProduct() {
   const [reviewsCount, setReviewsCount] = useState(0);
   const [available, setAvailable] = useState(true);
   const [featured, setFeatured] = useState(false);
+  
+  // Product Details (Amazon-style)
+  const [material, setMaterial] = useState('');
+  const [careInstructions, setCareInstructions] = useState('');
+  const [features, setFeatures] = useState<string[]>([]);
+  const [currentFeature, setCurrentFeature] = useState('');
+  
   const [images, setImages] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -175,6 +182,18 @@ export default function NewProduct() {
     setShowCustomColorForm(false);
     
     console.log('✅ تم إضافة اللون المخصص:', newColor);
+  }
+
+  // Add feature to the list
+  function handleAddFeature() {
+    if (!currentFeature.trim()) return;
+    setFeatures([...features, currentFeature.trim()]);
+    setCurrentFeature('');
+  }
+
+  // Remove feature from the list
+  function handleRemoveFeature(index: number) {
+    setFeatures(features.filter((_, i) => i !== index));
   }
 
   // Compress image before upload
@@ -378,6 +397,11 @@ export default function NewProduct() {
         rate,
         reviews: reviewsCount, // Reviews count
         reviewsCount, // Also save as reviewsCount for compatibility
+        
+        // Product Details (Amazon-style)
+        material: material || '',
+        careInstructions: careInstructions || '',
+        features: features || [],
         
         // Availability (React Native expects "inStock" not "available")
         available,
@@ -1314,8 +1338,90 @@ export default function NewProduct() {
                   />
                 </label>
               </div>
+            </div>
 
-              <div className="space-y-4">
+            {/* Material & Care Instructions */}
+            <div className="grid sm:grid-cols-2 gap-6 mt-6">
+              <div className="space-y-2">
+                <label className="block">
+                  <div className="text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+                    <span className="text-xl">🧵</span>
+                    <span>الخامة - Material</span>
+                  </div>
+                  <input
+                    value={material}
+                    onChange={e => setMaterial(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3.5 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-200 outline-none"
+                    placeholder="مثال: 100% Cotton | 63% Polyester, 36% Rayon"
+                  />
+                </label>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block">
+                  <div className="text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+                    <span className="text-xl">🧼</span>
+                    <span>تعليمات الغسيل - Care Instructions</span>
+                  </div>
+                  <input
+                    value={careInstructions}
+                    onChange={e => setCareInstructions(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3.5 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-200 outline-none"
+                    placeholder="مثال: غسيل آلي | Machine Wash"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Features Section */}
+            <div className="space-y-4 mt-6">
+              <div className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <span className="text-xl">✨</span>
+                <span>المميزات - Features (مثل Amazon)</span>
+              </div>
+              
+              <div className="flex gap-2">
+                <input
+                  value={currentFeature}
+                  onChange={e => setCurrentFeature(e.target.value)}
+                  onKeyPress={e => e.key === 'Enter' && (e.preventDefault(), handleAddFeature())}
+                  className="flex-1 border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-200 outline-none"
+                  placeholder="أضف ميزة للمنتج... | Add a feature..."
+                />
+                <button
+                  type="button"
+                  onClick={handleAddFeature}
+                  className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-6 py-3 rounded-xl font-bold hover:shadow-xl transition-all duration-200"
+                >
+                  ➕ إضافة
+                </button>
+              </div>
+
+              {features.length > 0 && (
+                <div className="space-y-2">
+                  {features.map((feature, index) => (
+                    <div key={index} className="flex items-center gap-3 bg-indigo-50 border-2 border-indigo-200 rounded-xl px-4 py-3">
+                      <span className="text-indigo-600">•</span>
+                      <span className="flex-1 text-gray-700">{feature}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFeature(index)}
+                        className="text-red-500 hover:text-red-700 font-bold"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="text-xs text-gray-500 mt-2">
+                💡 مثال: &quot;Premium soft-touch fabric&quot;, &quot;Suitable for men and women&quot;, &quot;Available in multiple sizes&quot;
+              </div>
+            </div>
+
+            {/* Availability & Featured Checkboxes */}
+            <div className="space-y-4">
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
@@ -1337,7 +1443,6 @@ export default function NewProduct() {
                 </label>
               </div>
             </div>
-          </div>
 
           {/* Section 7: Images */}
           <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border-2 border-teal-100">

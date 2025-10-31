@@ -670,6 +670,132 @@ const styles = StyleSheet.create({
 
 ---
 
+## 9️⃣ تفاصيل المنتج الإضافية (Product Details - Amazon Style)
+
+**الحقول الجديدة المضافة:**
+
+### Material (الخامة)
+
+```jsx
+{product.material && (
+  <View style={styles.detailSection}>
+    <Text style={styles.detailLabel}>🧵 Material Composition</Text>
+    <Text style={styles.detailValue}>{product.material}</Text>
+  </View>
+)}
+```
+
+### Care Instructions (تعليمات العناية)
+
+```jsx
+{product.careInstructions && (
+  <View style={styles.detailSection}>
+    <Text style={styles.detailLabel}>🧼 Care Instructions</Text>
+    <Text style={styles.detailValue}>{product.careInstructions}</Text>
+  </View>
+)}
+```
+
+### Features (المميزات - قائمة نقاط)
+
+```jsx
+{product.features && product.features.length > 0 && (
+  <View style={styles.featuresSection}>
+    <Text style={styles.sectionTitle}>✨ Product Features</Text>
+    {product.features.map((feature, index) => (
+      <View key={index} style={styles.featureItem}>
+        <Text style={styles.featureBullet}>•</Text>
+        <Text style={styles.featureText}>{feature}</Text>
+      </View>
+    ))}
+  </View>
+)}
+```
+
+### Reviews Count (عدد المراجعات)
+
+```jsx
+{/* التقييم مع عدد المراجعات */}
+<View style={styles.ratingContainer}>
+  <Text style={styles.ratingText}>⭐ {product.rate || product.rating || 0}</Text>
+  <Text style={styles.reviewsCount}>
+    ({product.reviews || product.reviewsCount || 0} Reviews)
+  </Text>
+</View>
+```
+
+### الـ Styles المطلوبة للحقول الجديدة:
+
+```javascript
+const styles = StyleSheet.create({
+  // ... الـ styles الموجودة ...
+  
+  detailSection: {
+    backgroundColor: '#F9FAFB',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  detailLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  detailValue: {
+    fontSize: 16,
+    color: '#1F2937',
+    lineHeight: 24,
+  },
+  featuresSection: {
+    backgroundColor: '#F3F4F6',
+    padding: 16,
+    borderRadius: 12,
+    marginVertical: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    marginBottom: 8,
+    alignItems: 'flex-start',
+  },
+  featureBullet: {
+    fontSize: 16,
+    color: '#7C3AED',
+    marginRight: 8,
+    fontWeight: 'bold',
+  },
+  featureText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#374151',
+    lineHeight: 20,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  ratingText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#F59E0B',
+    marginRight: 8,
+  },
+  reviewsCount: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+});
+```
+
+---
+
 ## 💡 ملاحظات مهمة
 
 1. **استخدم Optional Chaining** (`?.`) لتجنب الأخطاء إذا كانت البيانات غير موجودة

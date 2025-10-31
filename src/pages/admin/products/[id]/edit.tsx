@@ -44,6 +44,56 @@ export default function EditProduct() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [available, setAvailable] = useState(true);
   
+  // Product Details (Amazon-style)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [material, setMaterial] = useState('');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [careInstructions, setCareInstructions] = useState('');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [features, setFeatures] = useState<string[]>([]);
+  const [currentFeature, setCurrentFeature] = useState('');
+  
+  // Custom colors
+  const [customColorAr, setCustomColorAr] = useState('');
+  const [customColorEn, setCustomColorEn] = useState('');
+  const [customColorHex, setCustomColorHex] = useState('#000000');
+  const [showCustomColorForm, setShowCustomColorForm] = useState(false);
+  
+  // Color and Age options
+  const colorOptions = [
+    { ar: 'أبيض', en: 'White', hex: '#FFFFFF' },
+    { ar: 'أسود', en: 'Black', hex: '#000000' },
+    { ar: 'أحمر', en: 'Red', hex: '#FF0000' },
+    { ar: 'أزرق', en: 'Blue', hex: '#0074D9' },
+    { ar: 'أخضر', en: 'Green', hex: '#2ECC40' },
+    { ar: 'أصفر', en: 'Yellow', hex: '#FFDC00' },
+    { ar: 'رمادي', en: 'Gray', hex: '#AAAAAA' },
+    { ar: 'برتقالي', en: 'Orange', hex: '#FF851B' },
+    { ar: 'بنفسجي', en: 'Purple', hex: '#B10DC9' },
+    { ar: 'وردي', en: 'Pink', hex: '#F012BE' },
+    { ar: 'بني', en: 'Brown', hex: '#8B4513' },
+    { ar: 'بيج', en: 'Beige', hex: '#F5F5DC' },
+    { ar: 'فضي', en: 'Silver', hex: '#C0C0C0' },
+    { ar: 'ذهبي', en: 'Gold', hex: '#FFD700' },
+    { ar: 'كحلي', en: 'Navy', hex: '#000080' },
+    { ar: 'سماوي', en: 'Sky Blue', hex: '#87CEEB' },
+  ];
+  
+  const ageOptions = [
+    { ar: '0-6 أشهر', en: '0-6 months' },
+    { ar: '6-12 شهر', en: '6-12 months' },
+    { ar: '1-2 سنة', en: '1-2 years' },
+    { ar: '2-3 سنوات', en: '2-3 years' },
+    { ar: '3-4 سنوات', en: '3-4 years' },
+    { ar: '4-5 سنوات', en: '4-5 years' },
+    { ar: '5-6 سنوات', en: '5-6 years' },
+    { ar: '6-7 سنوات', en: '6-7 years' },
+    { ar: '7-8 سنوات', en: '7-8 years' },
+    { ar: '8-10 سنوات', en: '8-10 years' },
+    { ar: '10-12 سنة', en: '10-12 years' },
+    { ar: '12-14 سنة', en: '12-14 years' },
+  ];
+  
   // Images
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [newImages, setNewImages] = useState<File[]>([]);
@@ -109,6 +159,11 @@ export default function EditProduct() {
           setRate(data.rate || data.rating || 0);
           setReviewsCount(data.reviews || data.reviewsCount || 0);
           setAvailable(data.available !== undefined ? data.available : true);
+          
+          // Load Product Details (Amazon-style)
+          setMaterial(data.material || '');
+          setCareInstructions(data.careInstructions || '');
+          setFeatures(data.features || []);
         }
       } catch (error) {
         console.error('Error loading product:', error);
@@ -120,6 +175,63 @@ export default function EditProduct() {
 
     loadProduct();
   }, [id]);
+
+  // Helper functions for variants
+  function handleSizeToggle(size: string) {
+    setSizes(prev => 
+      prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size]
+    );
+  }
+
+  function handleShoeSizeToggle(size: string) {
+    setShoeSizes(prev => 
+      prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size]
+    );
+  }
+
+  function handleAgeRangeToggle(age: string) {
+    setAgeRange(prev => 
+      prev.includes(age) ? prev.filter(a => a !== age) : [...prev, age]
+    );
+  }
+
+  function handleColorToggle(color: {ar: string, en: string, hex: string}) {
+    const isSelected = colors.some(c => c.hex === color.hex);
+    if (isSelected) {
+      setColors(colors.filter(c => c.hex !== color.hex));
+    } else {
+      setColors([...colors, color]);
+    }
+  }
+
+  function handleAddCustomColor() {
+    if (!customColorAr.trim() || !customColorEn.trim()) {
+      alert('يرجى إدخال اسم اللون بالعربي والإنجليزي');
+      return;
+    }
+
+    const newColor = {
+      ar: customColorAr.trim(),
+      en: customColorEn.trim(),
+      hex: customColorHex
+    };
+
+    setColors([...colors, newColor]);
+    setCustomColorAr('');
+    setCustomColorEn('');
+    setCustomColorHex('#000000');
+    setShowCustomColorForm(false);
+  }
+
+  function handleAddFeature() {
+    if (!currentFeature.trim()) return;
+    setFeatures([...features, currentFeature.trim()]);
+    setCurrentFeature('');
+  }
+
+  function handleRemoveFeature(index: number) {
+    setFeatures(features.filter((_, i) => i !== index));
+  }
 
   // Auto-calculate final price when cost fields change
   useEffect(() => {
@@ -272,6 +384,30 @@ export default function EditProduct() {
         subcategoryNameAr: selectedSubcategory?.nameAr || '',
         brandId: brand || '',
         brandName: selectedBrand?.nameEn || '',
+        
+        // Variants & Details
+        sizes: sizes || [],
+        shoeSizes: shoeSizes || [],
+        ageRange: ageRange || [],
+        colors: colors || [],
+        gender: gender || '',
+        season: season || '',
+        
+        // Additional info
+        deliveryTime: deliveryTime || '',
+        rating: rate,
+        rate,
+        reviews: reviewsCount,
+        reviewsCount,
+        
+        // Product Details (Amazon-style)
+        material: material || '',
+        careInstructions: careInstructions || '',
+        features: features || [],
+        
+        // Availability
+        available,
+        inStock: available,
         
         // Images
         images: finalImages,
@@ -523,6 +659,141 @@ export default function EditProduct() {
               ⭐ منتج مميز | Featured Product
             </span>
           </label>
+        </div>
+
+        {/* Section 4: Colors */}
+        <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-2xl shadow-xl p-6 md:p-8 border-2 border-pink-100 mb-6">
+          <div className="flex items-center gap-3 mb-6 pb-4 border-b-2 border-pink-100">
+            <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-lg">
+              4
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800">🎨 الألوان - Colors</h2>
+              <p className="text-sm text-gray-500">اختر الألوان المتوفرة للمنتج</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-4">
+            {colorOptions.map((color) => {
+              const isSelected = colors.some(c => c.hex === color.hex);
+              return (
+                <button
+                  key={color.hex}
+                  type="button"
+                  onClick={() => handleColorToggle(color)}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200 ${
+                    isSelected 
+                      ? 'border-pink-500 bg-pink-100 shadow-lg scale-105' 
+                      : 'border-gray-200 hover:border-pink-300 hover:bg-pink-50'
+                  }`}
+                >
+                  <div 
+                    className="w-12 h-12 rounded-full shadow-md border-2 border-white"
+                    style={{ backgroundColor: color.hex }}
+                  />
+                  <span className="text-xs font-semibold text-gray-700">{color.ar}</span>
+                  <span className="text-xs text-gray-500">{color.en}</span>
+                  {isSelected && <span className="text-pink-500 font-bold">✓</span>}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Custom Color Form */}
+          {!showCustomColorForm && (
+            <button
+              type="button"
+              onClick={() => setShowCustomColorForm(true)}
+              className="w-full bg-gradient-to-r from-pink-500 to-rose-500 text-white py-3 px-4 rounded-xl font-bold hover:shadow-xl transition-all duration-200"
+            >
+              ➕ إضافة لون مخصص | Add Custom Color
+            </button>
+          )}
+
+          {showCustomColorForm && (
+            <div className="mt-4 bg-white rounded-xl p-6 border-2 border-pink-200 shadow-inner">
+              <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span>🎨</span>
+                <span>إضافة لون جديد | Add New Color</span>
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    الاسم بالعربي
+                  </label>
+                  <input
+                    type="text"
+                    value={customColorAr}
+                    onChange={(e) => setCustomColorAr(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 transition-all outline-none"
+                    placeholder="مثال: زهري فاتح"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    English Name
+                  </label>
+                  <input
+                    type="text"
+                    value={customColorEn}
+                    onChange={(e) => setCustomColorEn(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 transition-all outline-none"
+                    placeholder="Example: Light Pink"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    اختر اللون | Pick Color
+                  </label>
+                  <input
+                    type="color"
+                    value={customColorHex}
+                    onChange={(e) => setCustomColorHex(e.target.value)}
+                    className="w-full h-10 border-2 border-gray-200 rounded-lg cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleAddCustomColor}
+                  className="flex-1 bg-pink-500 text-white py-2 px-4 rounded-lg font-bold hover:bg-pink-600 transition-all"
+                >
+                  ✓ إضافة
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCustomColorForm(false)}
+                  className="px-4 py-2 border-2 border-gray-300 rounded-lg font-bold hover:bg-gray-100 transition-all"
+                >
+                  ✕ إلغاء
+                </button>
+              </div>
+            </div>
+          )}
+
+          {colors.length > 0 && (
+            <div className="mt-4 p-4 bg-white rounded-xl border-2 border-pink-200">
+              <p className="text-sm font-bold text-gray-700 mb-2">
+                الألوان المختارة ({colors.length}):
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {colors.map((color, idx) => (
+                  <div key={idx} className="flex items-center gap-2 bg-pink-100 px-3 py-2 rounded-lg border border-pink-300">
+                    <div 
+                      className="w-4 h-4 rounded-full border border-gray-300"
+                      style={{ backgroundColor: color.hex }}
+                    />
+                    <span className="text-sm font-semibold">{color.ar} / {color.en}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Existing Images */}
