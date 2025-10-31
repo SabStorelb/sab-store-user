@@ -287,10 +287,11 @@ export default function AdminDashboard() {
       
       // تحديد البيانات المطلوبة
       const needsCategories = visibleStatConfig.some(item => item.key === 'categories' || item.key === 'subcategories');
-      const needsUsers = visibleStatConfig.some(item => item.key === 'customers');
+      const needsUsers = visibleStatConfig.some(item => item.key === 'customers' || item.key === 'admins');
       const needsProducts = visibleStatConfig.some(item => item.key === 'products' || item.key === 'warehouseSystem' || item.key === 'vendorSystem');
       const needsSuppliers = visibleStatConfig.some(item => item.key === 'vendorSystem');
       const needsOrders = visibleStatConfig.some(item => item.key === 'orders');
+      const needsBanners = visibleStatConfig.some(item => item.key === 'banners');
 
       // تحميل البيانات المطلوبة فقط
       if (needsCategories) {
@@ -307,6 +308,9 @@ export default function AdminDashboard() {
       }
       if (needsOrders) {
         dataPromises.orders = getDocs(collection(firebaseDb, 'orders'));
+      }
+      if (needsBanners) {
+        dataPromises.banners = getDocs(collection(firebaseDb, 'banners'));
       }
 
       // ⚡ تنفيذ جميع الطلبات بشكل متوازي
@@ -551,10 +555,14 @@ export default function AdminDashboard() {
               newTrends[item.key] = 0;
             }
   
-          } else if (item.key === 'products' || item.key === 'categories') {
+          } else if (item.key === 'products' || item.key === 'categories' || item.key === 'banners') {
             // البيانات البسيطة
             try {
-              const targetData = item.key === 'products' ? data.products : data.categories;
+              let targetData;
+              if (item.key === 'products') targetData = data.products;
+              else if (item.key === 'categories') targetData = data.categories;
+              else if (item.key === 'banners') targetData = data.banners;
+              
               if (targetData) {
                 newStats[item.key] = targetData.size;
                 
@@ -568,6 +576,33 @@ export default function AdminDashboard() {
                   newTrends[item.key] = Math.round((newCount / oldCount) * 100);
                 } else {
                   newTrends[item.key] = newCount > 0 ? 100 : 0;
+                }
+              } else {
+                newStats[item.key] = 0;
+                newTrends[item.key] = 0;
+              }
+            } catch {
+              newStats[item.key] = 0;
+              newTrends[item.key] = 0;
+            }
+          } else if (item.key === 'admins') {
+            // حساب عدد المدراء
+            try {
+              const usersData = data.users;
+              if (usersData) {
+                const admins = usersData.docs.filter((doc) => doc.data().isAdmin === true);
+                newStats[item.key] = admins.length;
+                
+                const oldAdmins = admins.filter((doc) => {
+                  const createdAt = doc.data().createdAt;
+                  return createdAt && createdAt.toDate && createdAt.toDate() < sevenDaysAgoTimestamp.toDate();
+                }).length;
+                
+                const newAdmins = admins.length - oldAdmins;
+                if (oldAdmins > 0) {
+                  newTrends[item.key] = Math.round((newAdmins / oldAdmins) * 100);
+                } else {
+                  newTrends[item.key] = newAdmins > 0 ? 100 : 0;
                 }
               } else {
                 newStats[item.key] = 0;
