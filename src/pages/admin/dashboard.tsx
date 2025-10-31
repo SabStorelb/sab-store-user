@@ -8,7 +8,7 @@ function exportStatsToExcel(stats: { [key: string]: number }) {
 }
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { collection, getDocs, onSnapshot, query, Timestamp, where } from 'firebase/firestore';
 import { firebaseDb } from '../../lib/firebase';
 import { useAdminPermissions } from '../../lib/useAdminPermissions';
@@ -25,24 +25,15 @@ type PermissionMeta = {
   superAdminOnly?: boolean;
 };
 
-type DashboardNavItem = PermissionMeta & {
-  key: string;
-  href: string;
-  labelEn: string;
-  labelAr: string;
-  color: string;
-  icon: JSX.Element;
-};
-
 type StatConfigItem = PermissionMeta & {
   key: string;
   labelEn: string;
   labelAr: string;
   color: string;
-  icon: JSX.Element;
+  icon: ReactNode;
   chartData: number[];
   badge?: string;
-  hasQuickView: boolean;
+  hasQuickView?: boolean;
 };
 
 type OrdersDetail = {
@@ -59,163 +50,41 @@ type CustomersDetail = {
   inactive: number;
 };
 
-type GenericDetail = {
-  total?: number;
-  [key: string]: number | undefined;
+type WarehouseDetail = {
+  total: number;
+  totalStock: number;
+  lowStock: number;
+  outOfStock: number;
 };
 
-type StatDetail = OrdersDetail | CustomersDetail | GenericDetail;
-
-type DetailedStatsMap = Partial<Record<string, StatDetail>>;
-
-const isOrdersDetail = (detail: StatDetail | undefined): detail is OrdersDetail => {
-  return Boolean(detail && 'paid' in detail && 'new' in detail);
+type VendorDetail = {
+  total: number;
+  vendorProducts: number;
+  activeVendors: number;
 };
 
-const isCustomersDetail = (detail: StatDetail | undefined): detail is CustomersDetail => {
-  return Boolean(detail && 'active' in detail && 'inactive' in detail);
-};
+type DetailedStatsValue =
+  | number
+  | OrdersDetail
+  | CustomersDetail
+  | WarehouseDetail
+  | VendorDetail;
 
-const navItems: DashboardNavItem[] = [
-  {
-    key: 'products',
-    href: '/admin/products',
-    labelEn: 'Products',
-    labelAr: 'المنتجات',
-    color: 'from-blue-500 to-indigo-500',
-    icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V7a2 2 0 00-2-2H6a2 2 0 00-2 2v6m16 0a2 2 0 01-2 2H6a2 2 0 01-2-2m16 0V7m0 6v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6" />
-      </svg>
-    ),
-    requiredPermission: 'canManageProducts',
-  },
-  {
-    key: 'warehouseSystem',
-    href: '/admin/warehouse',
-    labelEn: 'Warehouse',
-    labelAr: 'نظام المستودعات',
-    color: 'from-slate-600 to-slate-800',
-    icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 7l9-4 9 4v10a2 2 0 01-2 2h-2a2 2 0 01-2-2v-3H7v3a2 2 0 01-2 2H3a2 2 0 01-2-2V7z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 21V10h6v11" />
-      </svg>
-    ),
-    requiredPermission: 'canManageProducts',
-  },
-  {
-    key: 'vendorSystem',
-    href: '/admin/vendors',
-    labelEn: 'Vendors',
-    labelAr: 'نظام البائعين',
-    color: 'from-amber-500 to-orange-500',
-    icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16 11a4 4 0 10-8 0 4 4 0 008 0z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 15c-4.418 0-8 2.015-8 4.5V21h16v-1.5c0-2.485-3.582-4.5-8-4.5z" />
-      </svg>
-    ),
-    requiredPermission: 'canManageProducts',
-  },
-  {
-    key: 'brands',
-    href: '/admin/brands',
-    labelEn: 'Brands',
-    labelAr: 'الماركات',
-    color: 'from-emerald-500 to-teal-500',
-    icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h10v10H7V7z" />
-      </svg>
-    ),
-    requiredPermission: 'canManageBrands',
-  },
-  {
-    key: 'categories',
-    href: '/admin/categories',
-    labelEn: 'Categories',
-    labelAr: 'الأقسام',
-    color: 'from-orange-500 to-amber-500',
-    icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <circle cx="12" cy="12" r="10" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h8" />
-      </svg>
-    ),
-    requiredPermission: 'canManageCategories',
-  },
-  {
-    key: 'orders',
-    href: '/admin/orders',
-    labelEn: 'Orders',
-    labelAr: 'الطلبات',
-    color: 'from-purple-500 to-violet-500',
-    icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h18v2a2 2 0 01-2 2H5a2 2 0 01-2-2V3zm0 6h18v12a2 2 0 01-2 2H5a2 2 0 01-2-2V9zm5 4h2v2H8v-2zm4 0h2v2h-2v-2z" />
-      </svg>
-    ),
-    requiredPermission: 'canManageOrders',
-  },
-  {
-    key: 'customers',
-    href: '/admin/customers',
-    labelEn: 'Customers',
-    labelAr: 'العملاء',
-    color: 'from-pink-500 to-fuchsia-500',
-    icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20h6M3 20h5v-2a4 4 0 013-3.87M16 7a4 4 0 11-8 0 4 4 0 018 0z" />
-      </svg>
-    ),
-    requiredPermission: 'canManageUsers',
-  },
-  {
-    key: 'offers',
-    href: '/admin/offers',
-    labelEn: 'Offers',
-    labelAr: 'العروض',
-    color: 'from-yellow-500 to-lime-500',
-    icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M5.121 18.364L4 22l3.636-1.121 12.243-12.243a2 2 0 000-2.828l-2.828-2.828a2 2 0 00-2.828 0L5.121 18.364z" />
-      </svg>
-    ),
-    requiredPermission: 'canManageProducts',
-  },
-  {
-    key: 'banners',
-    href: '/admin/banners',
-    labelEn: 'Banners',
-    labelAr: 'البنارات',
-    color: 'from-red-500 to-rose-500',
-    icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <rect x="4" y="8" width="16" height="8" rx="2" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V6a2 2 0 012-2h12a2 2 0 012 2v2" />
-      </svg>
-    ),
-    requiredPermission: 'canManageBanners',
-  },
-  {
-    key: 'admins',
-    href: '/admin/admins',
-    labelEn: 'Admins',
-    labelAr: 'المدراء',
-    color: 'from-slate-600 to-gray-600',
-    icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <circle cx="12" cy="8" r="4" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6 20v-2a4 4 0 014-4h4a4 4 0 014 4v2" />
-      </svg>
-    ),
-    requiredPermission: 'canManageAdmins',
-    superAdminOnly: true,
-  },
-];
+type DetailedStatsMap = Record<string, DetailedStatsValue>;
 
+const isOrdersDetail = (value: DetailedStatsValue): value is OrdersDetail =>
+  typeof value === 'object' &&
+  value !== null &&
+  'paid' in value &&
+  'open' in value &&
+  'closed' in value &&
+  'new' in value;
 
+const isCustomersDetail = (value: DetailedStatsValue): value is CustomersDetail =>
+  typeof value === 'object' &&
+  value !== null &&
+  'active' in value &&
+  'inactive' in value;
 
 const statConfig: StatConfigItem[] = [
   {
@@ -334,11 +203,6 @@ export default function AdminDashboard() {
 
     return true;
   }, [admin, isSuperAdmin]);
-
-  const visibleNavItems = useMemo(
-    () => navItems.filter(canAccess),
-    [canAccess]
-  );
 
   const visibleStatConfig = useMemo(
     () => statConfig.filter(canAccess),
@@ -966,47 +830,6 @@ export default function AdminDashboard() {
           })()
         )}
         </div>
-
-        {visibleNavItems.length > 0 && (
-          <div className="mt-4 md:mt-8 rounded-3xl border border-white/70 bg-white/80 p-6 shadow-xl backdrop-blur-xl">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
-              <span className="text-3xl">🚀</span>
-              <span>روابط الوصول السريع</span>
-            </h2>
-            <p className="text-sm text-gray-500 sm:text-right">
-              يعرض هذا القسم الصفحات والأدوات المسموح لك بالوصول إليها وفق صلاحياتك الحالية.
-            </p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            {visibleNavItems.map((item) => (
-              <Link
-                key={item.key}
-                href={item.href}
-                className="group relative overflow-hidden rounded-2xl shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
-              >
-                <div className={`bg-gradient-to-r ${item.color} text-white p-5 flex items-center justify-between`}>
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-white">
-                      {item.icon}
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold text-white/80">{item.labelEn}</div>
-                      <div className="text-lg font-extrabold tracking-wide">{item.labelAr}</div>
-                    </div>
-                  </div>
-                  <div className="text-white/80 transition-transform duration-300 group-hover:translate-x-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-7 h-7">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="absolute inset-0 bg-white/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-              </Link>
-            ))}
-          </div>
-          </div>
-        )}
       </div>
 
       {/* Quick View Modal */}
