@@ -4,6 +4,8 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import ProtectedPage from '../../components/ProtectedPage';
+import { useAdminPermissions } from '../../lib/useAdminPermissions';
 
 interface StoreSettings {
   storeName: { en: string; ar: string };
@@ -32,6 +34,7 @@ interface StoreSettings {
 
 export default function StoreSettings() {
   const router = useRouter();
+  const { isSuperAdmin, loading: permissionsLoading } = useAdminPermissions();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<StoreSettings>({
@@ -56,6 +59,14 @@ export default function StoreSettings() {
 
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState('');
+
+  // حماية الصفحة - فقط Super Admin
+  useEffect(() => {
+    if (!permissionsLoading && !isSuperAdmin) {
+      alert('⛔ هذه الصفحة مخصصة لـ Super Admin فقط!');
+      router.push('/admin/dashboard');
+    }
+  }, [permissionsLoading, isSuperAdmin, router]);
 
   useEffect(() => {
     fetchSettings();
@@ -90,6 +101,12 @@ export default function StoreSettings() {
   }
 
   async function handleSaveSettings() {
+    // حماية: فقط Super Admin يمكنه الحفظ
+    if (!isSuperAdmin) {
+      alert('⛔ عذراً! فقط Super Admin يمكنه حفظ إعدادات المتجر.');
+      return;
+    }
+
     setSaving(true);
     try {
       let logoURL = settings.logo;
@@ -129,6 +146,13 @@ export default function StoreSettings() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
+      {/* تحذير لغير Super Admin */}
+      {!isSuperAdmin && (
+        <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          ⛔ <strong>تنبيه:</strong> هذه الصفحة مخصصة لـ Super Admin فقط. لا يمكنك حفظ التغييرات.
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -440,8 +464,13 @@ export default function StoreSettings() {
       <div className="mt-6 flex justify-end">
         <button
           onClick={handleSaveSettings}
-          disabled={saving}
-          className="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700 disabled:bg-gray-400 transition text-lg"
+          disabled={saving || !isSuperAdmin}
+          className={`px-8 py-3 rounded-lg font-bold transition text-lg ${
+            isSuperAdmin 
+              ? 'bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400' 
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
+          title={!isSuperAdmin ? 'فقط Super Admin يمكنه حفظ الإعدادات' : ''}
         >
           {saving ? 'جاري الحفظ...' : '💾 حفظ جميع الإعدادات'}
         </button>
