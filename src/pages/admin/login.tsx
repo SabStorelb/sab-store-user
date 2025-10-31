@@ -96,37 +96,45 @@ export default function AdminLogin() {
       return;
     }
 
+    setLoading(true);
+    setError(null);
+
     try {
-      setLoading(true);
+      console.log('🔍 Sending reset email to:', resetEmail);
+      console.log('🔍 Firebase Auth:', firebaseAuth);
+      console.log('🔍 Auth domain:', process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN);
       
-      // First, check if this email belongs to an admin
-      // We need to use the API to check server-side
-      const checkResponse = await fetch('/api/auth/check-admin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: resetEmail }),
-      });
-
-      const checkData = await checkResponse.json();
-
-      if (!checkData.isAdmin) {
-        setError('هذا البريد الإلكتروني غير مسجل كمدير - This email is not registered as admin');
-        setLoading(false);
-        return;
-      }
-
-      // If admin, send password reset email with action code settings
-      const actionCodeSettings = {
-        url: 'https://admin.sab-store.com/admin/login',
-        handleCodeInApp: false,
-      };
+      // Important: We let Firebase send to default action handler
+      // The user will need to update Firebase Console Email Template
+      await sendPasswordResetEmail(firebaseAuth, resetEmail);
       
-      await sendPasswordResetEmail(firebaseAuth, resetEmail, actionCodeSettings);
+      console.log('✅ Reset email sent successfully');
       setResetStep(2);
       setError(null);
-      setLoading(false);
     } catch (err: any) {
-      setError('فشل إرسال رابط إعادة التعيين - Failed to send reset link');
+      console.error('❌ Reset email error:', err);
+      console.error('Error code:', err?.code);
+      console.error('Error message:', err?.message);
+      console.error('Full error:', JSON.stringify(err, null, 2));
+      
+      const errorCode = err?.code || '';
+      
+      if (errorCode === 'auth/user-not-found') {
+        setError('البريد الإلكتروني غير مسجل - Email not found');
+      } else if (errorCode === 'auth/invalid-email') {
+        setError('البريد الإلكتروني غير صحيح - Invalid email');
+      } else if (errorCode === 'auth/too-many-requests') {
+        setError('محاولات كثيرة، الرجاء المحاولة بعد 15 دقيقة - Too many attempts, try again in 15 minutes');
+      } else if (errorCode === 'auth/missing-continue-uri') {
+        setError('خطأ في الإعدادات - Configuration error');
+      } else if (errorCode === 'auth/invalid-continue-uri') {
+        setError('خطأ في رابط الإعادة - Invalid redirect URL');
+      } else if (errorCode === 'auth/unauthorized-continue-uri') {
+        setError('رابط الإعادة غير مصرح به - Unauthorized redirect URL');
+      } else {
+        setError(`فشل إرسال رابط إعادة التعيين - ${errorCode || err?.message || 'Unknown error'}`);
+      }
+    } finally {
       setLoading(false);
     }
   };
