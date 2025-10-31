@@ -219,6 +219,15 @@ export default function WarehouseSystemPage() {
             </div>
             <div className="flex flex-wrap items-center justify-end gap-3">
               <Link
+                href="/admin/dashboard"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-slate-600 to-gray-600 px-4 py-2 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 hover:from-slate-700 hover:to-gray-700 hover:shadow-xl"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                رجوع
+              </Link>
+              <Link
                 href="/admin/products"
                 className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl"
               >

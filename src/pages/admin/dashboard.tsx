@@ -1,12 +1,3 @@
-import * as XLSX from 'xlsx';
-function exportStatsToExcel(stats: { [key: string]: number }) {
-  const data = Object.entries(stats).map(([key, value]) => ({ القسم: key, العدد: value }));
-  const worksheet = XLSX.utils.json_to_sheet(data);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Statistics');
-  XLSX.writeFile(workbook, 'statistics.xlsx');
-}
-
 import Link from 'next/link';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { collection, getDocs, onSnapshot, query, Timestamp, where } from 'firebase/firestore';
@@ -577,23 +568,6 @@ export default function AdminDashboard() {
               </svg>
               <span className="hidden md:inline">التقارير</span>
             </Link>
-          )}
-
-          {canAccess({ requiredPermission: 'canViewReports' }) && visibleStatConfig.length > 0 && (
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => {
-                if (loading) return;
-                exportStatsToExcel(stats);
-              }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold shadow-lg transition-all duration-200 ${loading ? 'cursor-not-allowed bg-gradient-to-r from-slate-400 to-slate-500 text-white/80 opacity-70' : 'bg-gradient-to-r from-sky-500 to-blue-500 hover:from-sky-600 hover:to-blue-600 text-white hover:shadow-xl'}`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-6L12 15m0 0l4.5-4.5M12 15V3" />
-              </svg>
-              <span className="hidden md:inline">تصدير الإحصائيات</span>
-            </button>
           )}
 
           {/* Cost Calculator Link - SuperAdmin Only */}

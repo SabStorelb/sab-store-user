@@ -1,7 +1,28 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { firebaseDb, firebaseAuth } from '../../lib/firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
+import * as XLSX from 'xlsx';
+
+interface OrderItem {
+  productId: string;
+  quantity: number;
+  price: number;
+}
+
+interface Order {
+  id: string;
+  createdAt: string;
+  items?: OrderItem[];
+}
+
+interface Product {
+  id: string;
+  purchasePrice?: number;
+  shippingCost?: number;
+  deliveryCost?: number;
+  price?: number;
+}
 
 interface MonthlyReport {
   month: string;
@@ -21,7 +42,6 @@ export default function FinancialReports() {
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [monthlyReport, setMonthlyReport] = useState<MonthlyReport | null>(null);
-  const [yearlyReports, setYearlyReports] = useState<MonthlyReport[]>([]);
 
   // Check authentication
   useEffect(() => {
@@ -62,7 +82,52 @@ export default function FinancialReports() {
     }
 
     loadMonthlyReport();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonth, selectedYear]);
+
+  // Export to Excel function
+  function exportToExcel() {
+    if (!monthlyReport) return;
+
+    // Prepare data for Excel
+    const data = [
+      ['التقرير المالي الشهري', ''],
+      ['الشهر:', `${selectedMonth}/${selectedYear}`],
+      ['', ''],
+      ['البيان', 'القيمة'],
+      ['إجمالي المبيعات', `$${monthlyReport.totalSalesRevenue.toFixed(2)}`],
+      ['قيمة شراء المنتجات', `$${monthlyReport.totalPurchaseCost.toFixed(2)}`],
+      ['تكاليف الشحن', `$${monthlyReport.totalShippingCost.toFixed(2)}`],
+      ['تكاليف التوصيل', `$${monthlyReport.totalDeliveryCost.toFixed(2)}`],
+      ['إجمالي التكاليف', `$${monthlyReport.totalCost.toFixed(2)}`],
+      ['صافي الربح', `$${monthlyReport.totalProfit.toFixed(2)}`],
+      ['', ''],
+      ['إحصائيات إضافية', ''],
+      ['عدد الطلبات', monthlyReport.totalOrders],
+      ['عدد المنتجات المباعة', monthlyReport.totalProductsSold],
+      ['متوسط قيمة الطلب', `$${(monthlyReport.totalSalesRevenue / (monthlyReport.totalOrders || 1)).toFixed(2)}`],
+      ['هامش الربح', `${((monthlyReport.totalProfit / (monthlyReport.totalSalesRevenue || 1)) * 100).toFixed(1)}%`]
+    ];
+
+    // Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet(data);
+
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 30 },
+      { wch: 20 }
+    ];
+
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'التقرير المالي');
+
+    // Generate filename
+    const filename = `تقرير_مالي_${selectedMonth}_${selectedYear}.xlsx`;
+
+    // Download file
+    XLSX.writeFile(wb, filename);
+  }
 
   async function loadMonthlyReport() {
     try {
@@ -70,11 +135,11 @@ export default function FinancialReports() {
 
       // Get all products
       const productsSnap = await getDocs(collection(firebaseDb, 'products'));
-      const products = productsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const products = productsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
 
       // Get orders for the selected month
       const ordersSnap = await getDocs(collection(firebaseDb, 'orders'));
-      const orders = ordersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+      const orders = ordersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
 
       // Filter orders by month and year
       const filteredOrders = orders.filter(order => {
@@ -95,17 +160,17 @@ export default function FinancialReports() {
       let totalProductsSold = 0;
       filteredOrders.forEach(order => {
         if (order.items && Array.isArray(order.items)) {
-          order.items.forEach((item: any) => {
+          order.items.forEach((item: OrderItem) => {
             const product = products.find(p => p.id === item.productId);
             if (product) {
               const quantity = item.quantity || 1;
               totalProductsSold += quantity;
               
               // Calculate costs
-              const purchasePrice = (product as any).purchasePrice || 0;
-              const shippingCost = (product as any).shippingCost || 0;
-              const deliveryCost = (product as any).deliveryCost || 0;
-              const salePrice = item.price || (product as any).price || 0;
+              const purchasePrice = product.purchasePrice || 0;
+              const shippingCost = product.shippingCost || 0;
+              const deliveryCost = product.deliveryCost || 0;
+              const salePrice = item.price || product.price || 0;
 
               totalPurchaseCost += purchasePrice * quantity;
               totalShippingCost += shippingCost * quantity;
@@ -233,9 +298,22 @@ export default function FinancialReports() {
           </div>
         </div>
 
-        {/* Monthly Report */}
-        {monthlyReport && (
+        {/* Report Results */}
+        {monthlyReport && !loading && (
           <div className="space-y-6">
+            {/* Export Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={exportToExcel}
+                className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all shadow-lg hover:shadow-xl"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                تصدير إلى Excel
+              </button>
+            </div>
+
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Total Revenue */}

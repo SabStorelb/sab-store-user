@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { addDoc, collection, getDocs, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import ProtectedPage from '../../components/ProtectedPage';
-import { firebaseDb } from '../../lib/firebase';
+import { firebaseDb, firebaseStorage } from '../../lib/firebase';
 
 type VendorRecord = {
   id: string;
@@ -12,6 +13,8 @@ type VendorRecord = {
   contactName?: string;
   email?: string;
   phone?: string;
+  logo?: string;
+  logoUrl?: string;
 };
 
 type VendorProduct = {
@@ -51,6 +54,19 @@ export default function VendorSystemPage() {
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showAddVendorForm, setShowAddVendorForm] = useState(false);
+
+  // Vendor form states
+  const [vendorNameAr, setVendorNameAr] = useState('');
+  const [vendorNameEn, setVendorNameEn] = useState('');
+  const [vendorCompany, setVendorCompany] = useState('');
+  const [vendorContactName, setVendorContactName] = useState('');
+  const [vendorEmail, setVendorEmail] = useState('');
+  const [vendorPhone, setVendorPhone] = useState('');
+  const [vendorLogo, setVendorLogo] = useState<File | null>(null);
+  const [vendorLogoPreview, setVendorLogoPreview] = useState<string>('');
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [savingVendor, setSavingVendor] = useState(false);
 
   const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([]);
   const [subcategoryOptions, setSubcategoryOptions] = useState<SubcategoryOption[]>([]);
@@ -79,6 +95,8 @@ export default function VendorSystemPage() {
           contactName: (data.contactName as string) || undefined,
           email: (data.email as string) || undefined,
           phone: (data.phone as string) || undefined,
+          logo: (data.logo as string) || (data.logoUrl as string) || undefined,
+          logoUrl: (data.logoUrl as string) || (data.logo as string) || undefined,
         } satisfies VendorRecord;
       });
 
@@ -218,6 +236,120 @@ export default function VendorSystemPage() {
     setFormDescEn('');
   };
 
+  const resetVendorForm = () => {
+    setVendorNameAr('');
+    setVendorNameEn('');
+    setVendorCompany('');
+    setVendorContactName('');
+    setVendorEmail('');
+    setVendorPhone('');
+    setVendorLogo(null);
+    setVendorLogoPreview('');
+  };
+
+  const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Check file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        setFeedback({ type: 'error', message: '❌ حجم الصورة كبير جداً. الحد الأقصى 2 ميجابايت.' });
+        return;
+      }
+
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        setFeedback({ type: 'error', message: '❌ يرجى اختيار صورة فقط (PNG, JPG, JPEG).' });
+        return;
+      }
+
+      setVendorLogo(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setVendorLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleCreateVendor = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    
+    if (!vendorNameAr.trim()) {
+      setFeedback({ type: 'error', message: 'يرجى إدخال اسم البائع بالعربي على الأقل.' });
+      return;
+    }
+
+    setSavingVendor(true);
+    setFeedback(null); // Clear previous feedback
+
+    try {
+      let logoUrl = '';
+      
+      // Upload logo if provided
+      if (vendorLogo) {
+        setUploadingLogo(true);
+        try {
+          const timestamp = Date.now();
+          const fileName = `vendors/${timestamp}_${vendorLogo.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+          const storageRef = ref(firebaseStorage, fileName);
+          
+          await uploadBytes(storageRef, vendorLogo);
+          logoUrl = await getDownloadURL(storageRef);
+          
+          console.log('Logo uploaded successfully:', logoUrl);
+        } catch (uploadError) {
+          console.error('Error uploading logo:', uploadError);
+          setFeedback({ type: 'error', message: '❌ فشل رفع الشعار. حاول مرة أخرى.' });
+          setSavingVendor(false);
+          setUploadingLogo(false);
+          return;
+        } finally {
+          setUploadingLogo(false);
+        }
+      }
+
+      const vendorData = {
+        name: vendorNameEn.trim() || vendorNameAr.trim(),
+        nameAr: vendorNameAr.trim(),
+        company: vendorCompany.trim() || vendorNameAr.trim(),
+        contactName: vendorContactName.trim() || '',
+        email: vendorEmail.trim() || '',
+        phone: vendorPhone.trim() || '',
+        logo: logoUrl || '',
+        logoUrl: logoUrl || '',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      console.log('Adding vendor:', vendorData);
+      
+      const docRef = await addDoc(collection(firebaseDb, 'suppliers'), vendorData);
+      
+      console.log('Vendor added successfully with ID:', docRef.id);
+
+      setFeedback({ type: 'success', message: '✅ تم إضافة البائع بنجاح!' });
+      resetVendorForm();
+      setShowAddVendorForm(false);
+      
+      // Auto-select the newly created vendor after a short delay
+      setTimeout(() => {
+        setSelectedVendorId(docRef.id);
+      }, 500);
+      
+    } catch (error) {
+      console.error('Error creating vendor:', error);
+      const errorMessage = error instanceof Error ? error.message : 'خطأ غير معروف';
+      setFeedback({ 
+        type: 'error', 
+        message: `❌ تعذر إضافة البائع: ${errorMessage}. تحقق من صلاحيات Firebase.` 
+      });
+    } finally {
+      setSavingVendor(false);
+    }
+  };
+
   const handleCreateProduct = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedVendor) {
@@ -312,6 +444,15 @@ export default function VendorSystemPage() {
             </div>
             <div className="flex flex-wrap items-center justify-end gap-3">
               <Link
+                href="/admin/dashboard"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-slate-600 to-gray-600 px-4 py-2 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 hover:from-slate-700 hover:to-gray-700 hover:shadow-xl"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                رجوع
+              </Link>
+              <Link
                 href="/admin/products"
                 className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 hover:from-purple-700 hover:to-pink-700 hover:shadow-xl"
               >
@@ -320,6 +461,15 @@ export default function VendorSystemPage() {
                 </svg>
                 لوحة المنتجات
               </Link>
+              <button
+                onClick={() => setShowAddVendorForm(true)}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 hover:from-green-700 hover:to-emerald-700 hover:shadow-xl"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                إضافة بائع جديد
+              </button>
               <button
                 onClick={() => setShowAddForm((prev) => !prev)}
                 disabled={!selectedVendor}
@@ -346,6 +496,183 @@ export default function VendorSystemPage() {
               }`}
             >
               {feedback.message}
+            </div>
+          )}
+
+          {/* Add Vendor Form Modal */}
+          {showAddVendorForm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+              <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-green-200 bg-white p-6 shadow-2xl">
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-slate-900">➕ إضافة بائع جديد</h2>
+                  <button
+                    onClick={() => {
+                      setShowAddVendorForm(false);
+                      resetVendorForm();
+                    }}
+                    className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                  >
+                    <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <form onSubmit={handleCreateVendor} className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700">
+                      اسم البائع (عربي) *
+                      <input
+                        type="text"
+                        value={vendorNameAr}
+                        onChange={(e) => setVendorNameAr(e.target.value)}
+                        required
+                        placeholder="مثال: محمد أحمد"
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm focus:border-green-400 focus:outline-none focus:ring-4 focus:ring-green-100"
+                      />
+                    </label>
+
+                    <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700">
+                      Vendor Name (English)
+                      <input
+                        type="text"
+                        value={vendorNameEn}
+                        onChange={(e) => setVendorNameEn(e.target.value)}
+                        placeholder="Example: Mohammed Ahmed"
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm focus:border-green-400 focus:outline-none focus:ring-4 focus:ring-green-100"
+                      />
+                    </label>
+                  </div>
+
+                  <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700">
+                    اسم الشركة / Company Name
+                    <input
+                      type="text"
+                      value={vendorCompany}
+                      onChange={(e) => setVendorCompany(e.target.value)}
+                      placeholder="مثال: شركة التجارة الدولية"
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm focus:border-green-400 focus:outline-none focus:ring-4 focus:ring-green-100"
+                    />
+                  </label>
+
+                  <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700">
+                    اسم جهة الاتصال / Contact Name
+                    <input
+                      type="text"
+                      value={vendorContactName}
+                      onChange={(e) => setVendorContactName(e.target.value)}
+                      placeholder="مثال: أحمد علي"
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm focus:border-green-400 focus:outline-none focus:ring-4 focus:ring-green-100"
+                    />
+                  </label>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700">
+                      البريد الإلكتروني / Email
+                      <input
+                        type="email"
+                        value={vendorEmail}
+                        onChange={(e) => setVendorEmail(e.target.value)}
+                        placeholder="example@domain.com"
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm focus:border-green-400 focus:outline-none focus:ring-4 focus:ring-green-100"
+                      />
+                    </label>
+
+                    <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700">
+                      رقم الهاتف / Phone
+                      <input
+                        type="tel"
+                        value={vendorPhone}
+                        onChange={(e) => setVendorPhone(e.target.value)}
+                        placeholder="+961 xx xxx xxx"
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm focus:border-green-400 focus:outline-none focus:ring-4 focus:ring-green-100"
+                      />
+                    </label>
+                  </div>
+
+                  {/* Logo Upload Section */}
+                  <div className="rounded-xl border-2 border-dashed border-green-200 bg-green-50/30 p-4">
+                    <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+                      <div className="flex items-center gap-2">
+                        <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        شعار البائع / Vendor Logo
+                      </div>
+                      <span className="text-xs text-slate-500">
+                        اختياري • يظهر في التطبيق كعلامة تجارية • أقصى حجم: 2MB • PNG, JPG, JPEG
+                      </span>
+                      
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoChange}
+                        className="mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm file:mr-4 file:rounded-lg file:border-0 file:bg-green-100 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-green-700 hover:file:bg-green-200 focus:border-green-400 focus:outline-none focus:ring-4 focus:ring-green-100"
+                      />
+                      
+                      {uploadingLogo && (
+                        <div className="flex items-center gap-2 text-sm text-green-600">
+                          <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          جاري رفع الشعار...
+                        </div>
+                      )}
+                      
+                      {vendorLogoPreview && !uploadingLogo && (
+                        <div className="mt-2 flex items-center gap-4">
+                          <div className="relative h-24 w-24 overflow-hidden rounded-xl border-2 border-green-200 bg-white shadow-sm">
+                            <img
+                              src={vendorLogoPreview}
+                              alt="Logo Preview"
+                              className="h-full w-full object-contain p-2"
+                            />
+                          </div>
+                          <div className="flex-1 text-xs text-slate-600">
+                            <p className="font-semibold text-green-600">✓ تم اختيار الشعار</p>
+                            <p className="mt-1">سيتم رفعه عند حفظ البائع</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setVendorLogo(null);
+                              setVendorLogoPreview('');
+                            }}
+                            className="rounded-lg bg-red-100 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-200"
+                          >
+                            إزالة
+                          </button>
+                        </div>
+                      )}
+                    </label>
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddVendorForm(false);
+                        resetVendorForm();
+                      }}
+                      className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 shadow-sm transition hover:bg-slate-50"
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={savingVendor}
+                      className={`flex-1 rounded-xl px-4 py-2 text-sm font-bold text-white shadow-lg transition ${
+                        savingVendor
+                          ? 'cursor-not-allowed bg-slate-400'
+                          : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700'
+                      }`}
+                    >
+                      {savingVendor ? '⏳ جاري الحفظ...' : '✅ حفظ البائع'}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           )}
 
@@ -383,21 +710,40 @@ export default function VendorSystemPage() {
                                 : 'border-slate-200 bg-white text-slate-700 hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-md'
                             }`}
                           >
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="text-xs font-semibold text-slate-400">{vendor.company || '—'}</div>
-                              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600">
-                                {productCount} منتج
-                              </span>
+                            <div className="flex items-center gap-3">
+                              {/* Vendor Logo */}
+                              {vendor.logoUrl || vendor.logo ? (
+                                <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg border-2 border-orange-200 bg-white shadow-sm">
+                                  <img
+                                    src={vendor.logoUrl || vendor.logo}
+                                    alt={vendor.nameAr || vendor.name}
+                                    className="h-full w-full object-contain p-1"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg border-2 border-slate-200 bg-slate-100 text-xl font-bold text-slate-400">
+                                  {(vendor.nameAr || vendor.name).charAt(0)}
+                                </div>
+                              )}
+                              
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="text-xs font-semibold text-slate-400">{vendor.company || '—'}</div>
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600">
+                                    {productCount} منتج
+                                  </span>
+                                </div>
+                                <div className="mt-1 text-base font-bold text-slate-800">
+                                  {vendor.nameAr || vendor.name}
+                                </div>
+                                {vendor.contactName && (
+                                  <div className="mt-1 text-xs text-slate-500">مسؤول التواصل: {vendor.contactName}</div>
+                                )}
+                                {vendor.phone && (
+                                  <div className="mt-1 text-xs text-slate-500">هاتف: {vendor.phone}</div>
+                                )}
+                              </div>
                             </div>
-                            <div className="mt-1 text-base font-bold text-slate-800">
-                              {vendor.nameAr || vendor.name}
-                            </div>
-                            {vendor.contactName && (
-                              <div className="mt-1 text-xs text-slate-500">مسؤول التواصل: {vendor.contactName}</div>
-                            )}
-                            {vendor.phone && (
-                              <div className="mt-1 text-xs text-slate-500">هاتف: {vendor.phone}</div>
-                            )}
                           </button>
                         </li>
                       );
@@ -411,16 +757,35 @@ export default function VendorSystemPage() {
               {selectedVendor ? (
                 <>
                   <div className="flex flex-col gap-2 border-b border-slate-100 pb-4 text-right">
-                    <h2 className="text-xl font-bold text-slate-900">{selectedVendor.nameAr || selectedVendor.name}</h2>
-                    <div className="text-sm text-slate-500">
-                      {selectedVendor.email && <span className="ml-2">البريد: {selectedVendor.email}</span>}
-                      {selectedVendor.phone && <span className="ml-2">الهاتف: {selectedVendor.phone}</span>}
-                    </div>
-                    {selectedVendor.company && (
-                      <div className="text-sm text-slate-500">الشركة: {selectedVendor.company}</div>
-                    )}
-                    <div className="text-xs font-semibold text-slate-400">
-                      {vendorProducts.length} منتج مرتبط بهذا البائع
+                    <div className="flex items-center gap-4">
+                      {/* Vendor Logo in Details */}
+                      {selectedVendor.logoUrl || selectedVendor.logo ? (
+                        <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border-2 border-orange-300 bg-white shadow-md">
+                          <img
+                            src={selectedVendor.logoUrl || selectedVendor.logo}
+                            alt={selectedVendor.nameAr || selectedVendor.name}
+                            className="h-full w-full object-contain p-2"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-xl border-2 border-slate-300 bg-gradient-to-br from-slate-100 to-slate-200 text-3xl font-bold text-slate-400 shadow-md">
+                          {(selectedVendor.nameAr || selectedVendor.name).charAt(0)}
+                        </div>
+                      )}
+                      
+                      <div className="flex-1">
+                        <h2 className="text-xl font-bold text-slate-900">{selectedVendor.nameAr || selectedVendor.name}</h2>
+                        <div className="text-sm text-slate-500">
+                          {selectedVendor.email && <span className="ml-2">البريد: {selectedVendor.email}</span>}
+                          {selectedVendor.phone && <span className="ml-2">الهاتف: {selectedVendor.phone}</span>}
+                        </div>
+                        {selectedVendor.company && (
+                          <div className="text-sm text-slate-500">الشركة: {selectedVendor.company}</div>
+                        )}
+                        <div className="text-xs font-semibold text-slate-400">
+                          {vendorProducts.length} منتج مرتبط بهذا البائع
+                        </div>
+                      </div>
                     </div>
                   </div>
 
