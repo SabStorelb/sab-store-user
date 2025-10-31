@@ -8,72 +8,237 @@ function exportStatsToExcel(stats: { [key: string]: number }) {
 }
 
 import Link from 'next/link';
-import { useRef } from 'react';
-import { query, where, onSnapshot, Timestamp } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { collection, getDocs, onSnapshot, query, Timestamp, where } from 'firebase/firestore';
 import { firebaseDb } from '../../lib/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { useAdminPermissions } from '../../lib/useAdminPermissions';
+import { AdminPermissions, hasPermission } from '../../lib/permissions';
 import StatCardSkeleton from '../../components/dashboard/StatCardSkeleton';
 import TrendBadge from '../../components/dashboard/TrendBadge';
-import MiniChart from '../../components/dashboard/MiniChart';
 import QuickViewModal from '../../components/dashboard/QuickViewModal';
 
 
-const navItems = [
-  { href: '/admin/products', label: 'المنتجات | Products', color: 'bg-blue-500' },
-  { href: '/admin/brands', label: 'الماركات | Brands', color: 'bg-green-500' },
-  { href: '/admin/categories', label: 'الأقسام | Categories', color: 'bg-orange-500' },
-  { href: '/admin/orders', label: 'الطلبات | Orders', color: 'bg-purple-500' },
-  { href: '/admin/customers', label: 'العملاء | Customers', color: 'bg-pink-500' },
-  { href: '/admin/offers', label: 'العروض | Offers', color: 'bg-yellow-500' },
-  { href: '/admin/banners', label: 'البنارات | Banners', color: 'bg-red-500' },
+type PermissionKey = keyof AdminPermissions;
+
+type PermissionMeta = {
+  requiredPermission?: PermissionKey;
+  superAdminOnly?: boolean;
+};
+
+type DashboardNavItem = PermissionMeta & {
+  key: string;
+  href: string;
+  labelEn: string;
+  labelAr: string;
+  color: string;
+  icon: JSX.Element;
+};
+
+type StatConfigItem = PermissionMeta & {
+  key: string;
+  labelEn: string;
+  labelAr: string;
+  color: string;
+  icon: JSX.Element;
+  chartData: number[];
+  badge?: string;
+  hasQuickView: boolean;
+};
+
+type OrdersDetail = {
+  total: number;
+  paid: number;
+  open: number;
+  closed: number;
+  new: number;
+};
+
+type CustomersDetail = {
+  total: number;
+  active: number;
+  inactive: number;
+};
+
+type GenericDetail = {
+  total?: number;
+  [key: string]: number | undefined;
+};
+
+type StatDetail = OrdersDetail | CustomersDetail | GenericDetail;
+
+type DetailedStatsMap = Partial<Record<string, StatDetail>>;
+
+const isOrdersDetail = (detail: StatDetail | undefined): detail is OrdersDetail => {
+  return Boolean(detail && 'paid' in detail && 'new' in detail);
+};
+
+const isCustomersDetail = (detail: StatDetail | undefined): detail is CustomersDetail => {
+  return Boolean(detail && 'active' in detail && 'inactive' in detail);
+};
+
+const navItems: DashboardNavItem[] = [
+  {
+    key: 'products',
+    href: '/admin/products',
+    labelEn: 'Products',
+    labelAr: 'المنتجات',
+    color: 'from-blue-500 to-indigo-500',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V7a2 2 0 00-2-2H6a2 2 0 00-2 2v6m16 0a2 2 0 01-2 2H6a2 2 0 01-2-2m16 0V7m0 6v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6" />
+      </svg>
+    ),
+    requiredPermission: 'canManageProducts',
+  },
+  {
+    key: 'brands',
+    href: '/admin/brands',
+    labelEn: 'Brands',
+    labelAr: 'الماركات',
+    color: 'from-emerald-500 to-teal-500',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h10v10H7V7z" />
+      </svg>
+    ),
+    requiredPermission: 'canManageBrands',
+  },
+  {
+    key: 'categories',
+    href: '/admin/categories',
+    labelEn: 'Categories',
+    labelAr: 'الأقسام',
+    color: 'from-orange-500 to-amber-500',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h8" />
+      </svg>
+    ),
+    requiredPermission: 'canManageCategories',
+  },
+  {
+    key: 'orders',
+    href: '/admin/orders',
+    labelEn: 'Orders',
+    labelAr: 'الطلبات',
+    color: 'from-purple-500 to-violet-500',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h18v2a2 2 0 01-2 2H5a2 2 0 01-2-2V3zm0 6h18v12a2 2 0 01-2 2H5a2 2 0 01-2-2V9zm5 4h2v2H8v-2zm4 0h2v2h-2v-2z" />
+      </svg>
+    ),
+    requiredPermission: 'canManageOrders',
+  },
+  {
+    key: 'customers',
+    href: '/admin/customers',
+    labelEn: 'Customers',
+    labelAr: 'العملاء',
+    color: 'from-pink-500 to-fuchsia-500',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20h6M3 20h5v-2a4 4 0 013-3.87M16 7a4 4 0 11-8 0 4 4 0 018 0z" />
+      </svg>
+    ),
+    requiredPermission: 'canManageUsers',
+  },
+  {
+    key: 'offers',
+    href: '/admin/offers',
+    labelEn: 'Offers',
+    labelAr: 'العروض',
+    color: 'from-yellow-500 to-lime-500',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5.121 18.364L4 22l3.636-1.121 12.243-12.243a2 2 0 000-2.828l-2.828-2.828a2 2 0 00-2.828 0L5.121 18.364z" />
+      </svg>
+    ),
+    requiredPermission: 'canManageProducts',
+  },
+  {
+    key: 'banners',
+    href: '/admin/banners',
+    labelEn: 'Banners',
+    labelAr: 'البنارات',
+    color: 'from-red-500 to-rose-500',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <rect x="4" y="8" width="16" height="8" rx="2" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V6a2 2 0 012-2h12a2 2 0 012 2v2" />
+      </svg>
+    ),
+    requiredPermission: 'canManageBanners',
+  },
+  {
+    key: 'admins',
+    href: '/admin/admins',
+    labelEn: 'Admins',
+    labelAr: 'المدراء',
+    color: 'from-slate-600 to-gray-600',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <circle cx="12" cy="8" r="4" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 20v-2a4 4 0 014-4h4a4 4 0 014 4v2" />
+      </svg>
+    ),
+    requiredPermission: 'canManageAdmins',
+    superAdminOnly: true,
+  },
 ];
 
 
 
-const statConfig = [
+const statConfig: StatConfigItem[] = [
   {
-    key: 'orders', labelEn: 'Orders', labelAr: 'الطلبات', color: 'bg-green-400',
+    key: 'orders', labelEn: 'Orders', labelAr: 'الطلبات', color: 'bg-gradient-to-br from-green-400 via-green-500 to-emerald-600',
     icon: (<svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h18v2a2 2 0 01-2 2H5a2 2 0 01-2-2V3zm0 6h18v12a2 2 0 01-2 2H5a2 2 0 01-2-2V9zm5 4h2v2H8v-2zm4 0h2v2h-2v-2z" /></svg>),
     chartData: [12, 19, 15, 25, 22, 30, 28],
     badge: '🔔',
     hasQuickView: true,
+    requiredPermission: 'canManageOrders',
   },
   {
-    key: 'products', labelEn: 'Products', labelAr: 'المنتجات', color: 'bg-purple-400',
+    key: 'products', labelEn: 'Products', labelAr: 'المنتجات', color: 'bg-gradient-to-br from-purple-400 via-purple-500 to-fuchsia-500',
     icon: (<svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M20 13V7a2 2 0 00-2-2H6a2 2 0 00-2 2v6m16 0a2 2 0 01-2 2H6a2 2 0 01-2-2m16 0V7m0 6v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6" /></svg>),
     chartData: [45, 52, 48, 58, 62, 70, 75],
     hasQuickView: true,
+    requiredPermission: 'canManageProducts',
   },
   {
-    key: 'brands', labelEn: 'Brands', labelAr: 'العلامات', color: 'bg-orange-500',
+    key: 'brands', labelEn: 'Brands', labelAr: 'العلامات', color: 'bg-gradient-to-br from-orange-400 via-orange-500 to-amber-500',
     icon: (<svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M7 7h10v10H7V7z" /></svg>),
     chartData: [8, 10, 9, 11, 12, 13, 14],
     hasQuickView: false,
+    requiredPermission: 'canManageBrands',
   },
   {
-    key: 'banners', labelEn: 'Banners', labelAr: 'البنارات', color: 'bg-red-400',
+    key: 'banners', labelEn: 'Banners', labelAr: 'البنارات', color: 'bg-gradient-to-br from-rose-400 via-red-500 to-rose-600',
     icon: (<svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="8" rx="2" /><path strokeLinecap="round" strokeLinejoin="round" d="M4 8V6a2 2 0 012-2h12a2 2 0 012 2v2" /></svg>),
     chartData: [3, 4, 4, 5, 5, 6, 6],
     hasQuickView: false,
+    requiredPermission: 'canManageBanners',
   },
   {
-    key: 'customers', labelEn: 'Customers', labelAr: 'العملاء', color: 'bg-indigo-500',
+    key: 'customers', labelEn: 'Customers', labelAr: 'العملاء', color: 'bg-gradient-to-br from-indigo-500 via-indigo-600 to-blue-600',
     icon: (<svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20h6M3 20h5v-2a4 4 0 013-3.87M16 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>),
     chartData: [120, 135, 142, 158, 165, 178, 190],
     hasQuickView: true,
+    requiredPermission: 'canManageUsers',
   },
   {
-    key: 'categories', labelEn: 'Categories', labelAr: 'الأقسام', color: 'bg-blue-400',
+    key: 'categories', labelEn: 'Categories', labelAr: 'الأقسام', color: 'bg-gradient-to-br from-blue-400 via-blue-500 to-indigo-500',
     icon: (<svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h8" /></svg>),
     chartData: [15, 16, 17, 18, 19, 20, 21],
     hasQuickView: false,
+    requiredPermission: 'canManageCategories',
   },
   {
-    key: 'subcategories', labelEn: 'Subcategories', labelAr: 'الأقسام الفرعية', color: 'bg-cyan-400',
+    key: 'subcategories', labelEn: 'Subcategories', labelAr: 'الأقسام الفرعية', color: 'bg-gradient-to-br from-cyan-400 via-cyan-500 to-sky-500',
     icon: (<svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" /><path strokeLinecap="round" strokeLinejoin="round" d="M9 9h6v6H9z" /></svg>),
     chartData: [35, 38, 40, 42, 45, 48, 50],
     hasQuickView: false,
+    requiredPermission: 'canManageCategories',
   },
   // DISABLED: addresses - تم تعطيلها مؤقتاً
   // {
@@ -83,10 +248,12 @@ const statConfig = [
   //   hasQuickView: false,
   // },
   {
-    key: 'admins', labelEn: 'Admins', labelAr: 'المدراء', color: 'bg-gray-500',
+    key: 'admins', labelEn: 'Admins', labelAr: 'المدراء', color: 'bg-gradient-to-br from-gray-500 via-gray-600 to-slate-600',
     icon: (<svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path strokeLinecap="round" strokeLinejoin="round" d="M6 20v-2a4 4 0 014-4h4a4 4 0 014 4v2" /></svg>),
     chartData: [3, 3, 3, 3, 3, 3, 3],
     hasQuickView: false,
+    requiredPermission: 'canManageAdmins',
+    superAdminOnly: true,
   },
   // DISABLED: dailyStats - تم تعطيلها لعدم وجود صفحة مخصصة لها
   // {
@@ -102,15 +269,39 @@ export default function AdminDashboard() {
   // Unread support messages counter and notification sound
   const [unreadSupportCount, setUnreadSupportCount] = useState(0);
   const prevSupportCount = useRef(0);
-  const [stats, setStats] = useState<{ [key: string]: number }>({});
-  const [detailedStats, setDetailedStats] = useState<{ [key: string]: any }>({});
-  const [trends, setTrends] = useState<{ [key: string]: number }>({});
+  const [stats, setStats] = useState<Record<string, number>>({});
+  const [detailedStats, setDetailedStats] = useState<DetailedStatsMap>({});
+  const [trends, setTrends] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [selectedModal, setSelectedModal] = useState<{ type: string; title: string } | null>(null);
   const [showOrderNotification, setShowOrderNotification] = useState(true);
   const [lastSeenOrderCount, setLastSeenOrderCount] = useState(0);
   const [adminName, setAdminName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
+
+  const { admin, loading: permissionsLoading, isSuperAdmin } = useAdminPermissions();
+
+  const canAccess = useCallback((meta: PermissionMeta): boolean => {
+    if (meta.superAdminOnly && !isSuperAdmin) {
+      return false;
+    }
+
+    if (meta.requiredPermission) {
+      return hasPermission(admin, meta.requiredPermission);
+    }
+
+    return true;
+  }, [admin, isSuperAdmin]);
+
+  const visibleNavItems = useMemo(
+    () => navItems.filter(canAccess),
+    [canAccess]
+  );
+
+  const visibleStatConfig = useMemo(
+    () => statConfig.filter(canAccess),
+    [canAccess]
+  );
 
   // جلب معلومات الأدمن
   useEffect(() => {
@@ -139,9 +330,11 @@ export default function AdminDashboard() {
 
   // التحقق من وجود طلبات جديدة
   useEffect(() => {
-    if (detailedStats.orders?.new > 0) {
+    const ordersDetail = detailedStats.orders;
+
+    if (isOrdersDetail(ordersDetail) && ordersDetail.new > 0) {
       // إذا كان عدد الطلبات الجديدة أكبر من آخر عدد تم رؤيته، أظهر الإشعار
-      if (detailedStats.orders.new > lastSeenOrderCount) {
+      if (ordersDetail.new > lastSeenOrderCount) {
         setShowOrderNotification(true);
       } else {
         setShowOrderNotification(false);
@@ -149,7 +342,7 @@ export default function AdminDashboard() {
     } else {
       setShowOrderNotification(false);
     }
-  }, [detailedStats.orders?.new, lastSeenOrderCount]);
+  }, [detailedStats, lastSeenOrderCount]);
 
   useEffect(() => {
     const q = query(collection(firebaseDb, 'supportMessages'), where('read', '==', false));
@@ -165,18 +358,33 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
+    if (permissionsLoading) {
+      return;
+    }
+
+    let isMounted = true;
+
     async function fetchStats() {
       setLoading(true);
-      const newStats: { [key: string]: number } = {};
-      const newDetailedStats: { [key: string]: any } = {};
-      const newTrends: { [key: string]: number } = {};
+  const newStats: Record<string, number> = {};
+  const newDetailedStats: DetailedStatsMap = {};
+  const newTrends: Record<string, number> = {};
+
+      if (visibleStatConfig.length === 0) {
+        if (!isMounted) return;
+        setStats(newStats);
+        setDetailedStats(newDetailedStats);
+        setTrends(newTrends);
+        setLoading(false);
+        return;
+      }
 
       // حساب تاريخ قبل 7 أيام لمقارنة البيانات
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       const sevenDaysAgoTimestamp = Timestamp.fromDate(sevenDaysAgo);
 
-      for (const item of statConfig) {
+      for (const item of visibleStatConfig) {
         if (item.key === 'subcategories') {
           // ✅ جمع الأقسام الفرعية داخل كل قسم
           try {
@@ -314,62 +522,99 @@ export default function AdminDashboard() {
           }
         }
       }
+      if (!isMounted) return;
       setStats(newStats);
       setDetailedStats(newDetailedStats);
       setTrends(newTrends);
       setLoading(false);
     }
     fetchStats();
-  }, []);
+    return () => {
+      isMounted = false;
+    };
+  }, [permissionsLoading, visibleStatConfig]);
 
 
   return (
-    <div className="min-h-screen p-8">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-100 via-white to-blue-100 p-6 md:p-10">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-gradient-to-b from-blue-200/60 via-transparent to-transparent blur-2xl" />
+      <div className="pointer-events-none absolute -right-24 top-24 h-80 w-80 rounded-full bg-blue-400/20 blur-3xl" />
+      <div className="pointer-events-none absolute -left-32 bottom-0 h-96 w-96 rounded-full bg-purple-300/20 blur-3xl" />
+
+      <div className="relative z-10 mx-auto max-w-7xl space-y-10">
+        <div className="rounded-3xl border border-white/70 bg-white/80 p-6 shadow-2xl backdrop-blur-xl lg:p-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex flex-wrap items-center gap-3">
           {/* Support messages icon with unread counter */}
-          <Link href="/admin/support-messages" title="رسائل الدعم | Support Messages" className="relative flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a3 3 0 003.22 0L22 8m-19 8V8a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-            </svg>
-            <span className="hidden md:inline">الرسائل</span>
-            {unreadSupportCount > 0 && (
-              <span className="bg-red-600 text-white text-xs rounded-full px-2 py-0.5 font-bold shadow">{unreadSupportCount}</span>
-            )}
-          </Link>
+          {canAccess({ requiredPermission: 'canManageUsers' }) && (
+            <Link href="/admin/support-messages" title="رسائل الدعم | Support Messages" className="relative flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a3 3 0 003.22 0L22 8m-19 8V8a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+              </svg>
+              <span className="hidden md:inline">الرسائل</span>
+              {unreadSupportCount > 0 && (
+                <span className="bg-red-600 text-white text-xs rounded-full px-2 py-0.5 font-bold shadow">{unreadSupportCount}</span>
+              )}
+            </Link>
+          )}
 
           {/* Activity Log Link */}
-          <Link href="/admin/activity-log" title="سجل النشاط | Activity Log" className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <span className="hidden md:inline">السجل</span>
-          </Link>
+          {canAccess({ superAdminOnly: true }) && (
+            <Link href="/admin/activity-log" title="سجل النشاط | Activity Log" className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span className="hidden md:inline">السجل</span>
+            </Link>
+          )}
 
           {/* Financial Reports Link */}
-          <Link href="/admin/financial-reports" title="التقارير المالية | Financial Reports" className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-            </svg>
-            <span className="hidden md:inline">التقارير</span>
-          </Link>
+          {canAccess({ requiredPermission: 'canViewReports' }) && (
+            <Link href="/admin/financial-reports" title="التقارير المالية | Financial Reports" className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              <span className="hidden md:inline">التقارير</span>
+            </Link>
+          )}
+
+          {canAccess({ requiredPermission: 'canViewReports' }) && visibleStatConfig.length > 0 && (
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => {
+                if (loading) return;
+                exportStatsToExcel(stats);
+              }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold shadow-lg transition-all duration-200 ${loading ? 'cursor-not-allowed bg-gradient-to-r from-slate-400 to-slate-500 text-white/80 opacity-70' : 'bg-gradient-to-r from-sky-500 to-blue-500 hover:from-sky-600 hover:to-blue-600 text-white hover:shadow-xl'}`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-6L12 15m0 0l4.5-4.5M12 15V3" />
+              </svg>
+              <span className="hidden md:inline">تصدير الإحصائيات</span>
+            </button>
+          )}
 
           {/* Cost Calculator Link - SuperAdmin Only */}
-          <Link href="/admin/cost-calculator" title="حاسبة التكلفة | Cost Calculator" className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-            </svg>
-            <span className="hidden md:inline">حاسبة التكلفة</span>
-          </Link>
+          {canAccess({ superAdminOnly: true }) && (
+            <Link href="/admin/cost-calculator" title="حاسبة التكلفة | Cost Calculator" className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              <span className="hidden md:inline">حاسبة التكلفة</span>
+            </Link>
+          )}
 
           {/* Settings Link */}
-          <Link href="/admin/settings" title="الإعدادات | Settings" className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-600 to-slate-600 hover:from-gray-700 hover:to-slate-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span className="hidden md:inline">الإعدادات</span>
-          </Link>
+          {canAccess({ requiredPermission: 'canManageAdmins', superAdminOnly: true }) && (
+            <Link href="/admin/settings" title="الإعدادات | Settings" className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-600 to-slate-600 hover:from-gray-700 hover:to-slate-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span className="hidden md:inline">الإعدادات</span>
+            </Link>
+          )}
 
           {/* Profile Link */}
           <Link href="/admin/profile" title="الملف الشخصي | Profile" className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
@@ -397,28 +642,38 @@ export default function AdminDashboard() {
           </button>
         </div>
         
-        {/* Admin Info */}
-        <div className="flex items-center gap-3">
-          <div className="text-right">
-            <h1 className="text-4xl font-bold text-gray-800">لوحة التحكم - Dashboard</h1>
-            {adminName && (
-              <p className="text-lg text-gray-600 mt-1">
-                مرحباً، <span className="font-bold text-blue-600">{adminName}</span> 👋
-              </p>
-            )}
+            {/* Admin Info */}
+            <div className="flex items-center gap-4 rounded-2xl bg-white/70 px-5 py-4 shadow-inner backdrop-blur-md">
+              <div className="hidden text-5xl lg:block">🎯</div>
+              <div className="text-right">
+                <h1 className="text-3xl font-extrabold text-gray-800 md:text-4xl">لوحة التحكم - Dashboard</h1>
+                {adminName && (
+                  <p className="mt-2 text-base text-gray-600">
+                    مرحباً، <span className="font-bold text-blue-600">{adminName}</span>
+                  </p>
+                )}
+                {adminEmail && (
+                  <p className="mt-1 flex items-center justify-end gap-2 text-sm text-gray-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-gray-400">
+                      <path d="M1.5 8.67v8.58A2.25 2.25 0 003.75 19.5h16.5a2.25 2.25 0 002.25-2.25V8.67l-9 4.5-9-4.5z" />
+                      <path d="M22.5 6.75v-.008l-.008-.004L12 1.5 1.508 6.738l-.008.004V6.75L12 12l10.5-5.25z" />
+                    </svg>
+                    <span>{adminEmail}</span>
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="text-6xl">🎯</div>
         </div>
-      </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {/* Render stat cards with loading skeleton */}
         {loading ? (
           // عرض Skeletons أثناء التحميل
-          Array.from({ length: 10 }).map((_, idx) => <StatCardSkeleton key={idx} />)
+          Array.from({ length: visibleStatConfig.length || 6 }).map((_, idx) => <StatCardSkeleton key={idx} />)
         ) : (
           (() => {
-            const cards = statConfig.map(item => {
+            const cards = visibleStatConfig.map(item => {
               // determine target path for clickable cards
               let target: string | null = null;
               if (item.key === 'products') target = '/admin/products';
@@ -434,23 +689,29 @@ export default function AdminDashboard() {
               else if (item.key === 'dailyStats') target = '/admin/dailyStats';
 
               const currentStat = stats[item.key] ?? 0;
-              const details = detailedStats[item.key];
+              const detail = detailedStats[item.key];
+              const ordersDetail = isOrdersDetail(detail) ? detail : undefined;
+              const customersDetail = isCustomersDetail(detail) ? detail : undefined;
               const trend = trends[item.key] ?? 0;
 
               const cardInner = (
                 <div 
-                  className={`${item.color} rounded-xl shadow-lg p-4 flex flex-col justify-between h-[200px] cursor-pointer hover:scale-[1.02] hover:shadow-2xl transition-all duration-300 relative overflow-hidden`}
+                  className={`${item.color} group relative overflow-hidden rounded-2xl border border-white/20 shadow-xl p-5 flex flex-col justify-between h-[210px] cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl`}
                   onClick={() => {
-                    if (item.key === 'orders' && details?.new > 0) {
+                    if (item.key === 'orders' && ordersDetail && ordersDetail.new > 0) {
                       // حفظ عدد الطلبات الجديدة في localStorage
-                      localStorage.setItem('lastSeenOrderCount', details.new.toString());
-                      setLastSeenOrderCount(details.new);
+                      localStorage.setItem('lastSeenOrderCount', ordersDetail.new.toString());
+                      setLastSeenOrderCount(ordersDetail.new);
                       setShowOrderNotification(false);
                     }
                   }}
                 >
+                  <div className="pointer-events-none absolute inset-0 bg-white/10 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                  <div className="pointer-events-none absolute -top-16 -right-16 h-40 w-40 rounded-full bg-white/25 blur-3xl" />
+                  <div className="pointer-events-none absolute -bottom-20 -left-20 h-48 w-48 rounded-full bg-black/20 blur-3xl" />
+
                   {/* إشعار الطلبات الجديدة - في وسط البطاقة */}
-                  {item.badge && details?.new > 0 && showOrderNotification && (
+                  {item.badge && ordersDetail && ordersDetail.new > 0 && showOrderNotification && (
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 rounded-xl">
                       <div className="relative">
                         {/* الدوائر المتموجة */}
@@ -461,7 +722,7 @@ export default function AdminDashboard() {
                         <div className="relative bg-red-600 text-white px-8 py-6 rounded-3xl font-black shadow-2xl flex flex-col items-center gap-3 border-4 border-white animate-bell-ring">
                           <span className="text-6xl drop-shadow-2xl animate-wiggle">{item.badge}</span>
                           <div className="bg-white text-red-600 px-6 py-3 rounded-2xl text-4xl font-black animate-bounce shadow-xl">
-                            {details.new}
+                            {ordersDetail.new}
                           </div>
                           <div className="text-2xl font-extrabold animate-pulse">
                             طلب جديد!
@@ -495,17 +756,17 @@ export default function AdminDashboard() {
                       </div>
                       
                       {/* عرض التفاصيل بجانب النص */}
-                      {details && item.key === 'customers' && (
+                      {customersDetail && (
                         <div className="text-xs text-white/90 space-y-0.5 font-semibold text-right">
-                          <div>✅ نشط: {details.active}</div>
-                          <div>💤 غير نشط: {details.inactive}</div>
+                          <div>✅ نشط: {customersDetail.active}</div>
+                          <div>💤 غير نشط: {customersDetail.inactive}</div>
                         </div>
                       )}
-                      {details && item.key === 'orders' && (
+                      {ordersDetail && (
                         <div className="text-xs text-white/90 space-y-0.5 font-semibold text-right">
-                          <div>💰 مدفوع: {details.paid}</div>
-                          <div>📂 مفتوح: {details.open}</div>
-                          <div>✅ مغلق: {details.closed}</div>
+                          <div>💰 مدفوع: {ordersDetail.paid}</div>
+                          <div>📂 مفتوح: {ordersDetail.open}</div>
+                          <div>✅ مغلق: {ordersDetail.closed}</div>
                         </div>
                       )}
                     </div>
@@ -549,7 +810,7 @@ export default function AdminDashboard() {
 
             // DISABLED: Summary - تم تعطيلها مؤقتاً
             // Find index of Daily Stats
-            // const dailyStatsIdx = statConfig.findIndex(item => item.key === 'dailyStats');
+            // const dailyStatsIdx = visibleStatConfig.findIndex(item => item.key === 'dailyStats');
             // Insert Summary after Daily Stats
             // cards.splice(dailyStatsIdx + 1, 0,
             //   <Link href="/admin/summary" key="summary" className="bg-green-600 rounded-lg shadow-md p-4 flex flex-col justify-between min-h-[140px] cursor-pointer hover:scale-[1.02] hover:shadow-xl transition-all duration-300">
@@ -565,16 +826,60 @@ export default function AdminDashboard() {
             return cards;
           })()
         )}
+        </div>
+
+        {visibleNavItems.length > 0 && (
+          <div className="mt-4 md:mt-8 rounded-3xl border border-white/70 bg-white/80 p-6 shadow-xl backdrop-blur-xl">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+              <span className="text-3xl">🚀</span>
+              <span>روابط الوصول السريع</span>
+            </h2>
+            <p className="text-sm text-gray-500 sm:text-right">
+              يعرض هذا القسم الصفحات والأدوات المسموح لك بالوصول إليها وفق صلاحياتك الحالية.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {visibleNavItems.map((item) => (
+              <Link
+                key={item.key}
+                href={item.href}
+                className="group relative overflow-hidden rounded-2xl shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+              >
+                <div className={`bg-gradient-to-r ${item.color} text-white p-5 flex items-center justify-between`}>
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-white">
+                      {item.icon}
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-white/80">{item.labelEn}</div>
+                      <div className="text-lg font-extrabold tracking-wide">{item.labelAr}</div>
+                    </div>
+                  </div>
+                  <div className="text-white/80 transition-transform duration-300 group-hover:translate-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-7 h-7">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="absolute inset-0 bg-white/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+              </Link>
+            ))}
+          </div>
+          </div>
+        )}
       </div>
 
       {/* Quick View Modal */}
       {selectedModal && (
-        <QuickViewModal
-          isOpen={true}
-          onClose={() => setSelectedModal(null)}
-          type={selectedModal.type}
-          title={selectedModal.title}
-        />
+        <div className="relative z-20">
+          <QuickViewModal
+            isOpen={true}
+            onClose={() => setSelectedModal(null)}
+            type={selectedModal.type}
+            title={selectedModal.title}
+          />
+        </div>
       )}
     </div>
   );

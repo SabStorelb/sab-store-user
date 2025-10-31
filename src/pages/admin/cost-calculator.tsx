@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { firebaseAuth } from '../../lib/firebase';
+import { firebaseAuth, firebaseDb } from '../../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function CostCalculator() {
   const router = useRouter();
+  const [accessStatus, setAccessStatus] = useState<'checking' | 'authorized' | 'unauthorized'>('checking');
   const [purchasePrice, setPurchasePrice] = useState(0);
   const [profitMargin, setProfitMargin] = useState(0);
   const [shippingCost, setShippingCost] = useState(0);
@@ -14,29 +16,38 @@ export default function CostCalculator() {
   useEffect(() => {
     const unsubscribe = firebaseAuth.onAuthStateChanged(async (user) => {
       if (!user) {
+        setAccessStatus('unauthorized');
         router.push('/admin/login');
         return;
       }
 
       try {
         const tokenResult = await user.getIdTokenResult();
-        let isSuperAdmin = tokenResult.claims.role === 'SuperAdmin';
+        const claimRole = typeof tokenResult.claims.role === 'string'
+          ? tokenResult.claims.role.toLowerCase()
+          : undefined;
+        const claimSuperFlag = tokenResult.claims.superadmin === true;
+
+        let isSuperAdmin = claimRole === 'superadmin' || claimSuperFlag;
 
         // إذا لم يكن SuperAdmin في التوكن، تحقق من قاعدة البيانات
         if (!isSuperAdmin) {
-          const { getDoc, doc } = await import('firebase/firestore');
-          const { firebaseDb } = await import('../../lib/firebase');
           const adminDoc = await getDoc(doc(firebaseDb, 'admins', user.uid));
-          isSuperAdmin = !!(adminDoc.exists && adminDoc.data() && adminDoc.data().role === 'SuperAdmin');
+          const firestoreRole = adminDoc.exists()
+            ? (adminDoc.data()?.role as string | undefined)
+            : undefined;
+          isSuperAdmin = firestoreRole?.toLowerCase() === 'superadmin';
         }
 
         if (!isSuperAdmin) {
-          alert('❌ هذه الصفحة متاحة فقط للمدير العام (SuperAdmin)');
-          router.push('/admin/dashboard');
+          setAccessStatus('unauthorized');
+          return;
         }
+
+        setAccessStatus('authorized');
       } catch (error) {
         console.error('Error checking admin role:', error);
-        router.push('/admin/dashboard');
+        setAccessStatus('unauthorized');
       }
     });
 
@@ -63,6 +74,49 @@ export default function CostCalculator() {
     setDeliveryCost(0);
     setFinalPrice(0);
   };
+
+  if (accessStatus === 'checking') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-purple-50 to-pink-50 p-8">
+        <div className="bg-white/80 backdrop-blur-sm px-8 py-10 rounded-2xl shadow-lg text-center space-y-4">
+          <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mx-auto animate-pulse">
+            <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-700">جاري التحقق من الصلاحيات...</h2>
+          <p className="text-sm text-gray-500">يرجى الانتظار لحظات</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (accessStatus === 'unauthorized') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-red-50 to-rose-50 p-6">
+        <div className="max-w-lg w-full bg-white border border-red-200 rounded-2xl shadow-2xl p-8 text-center space-y-6">
+          <div className="w-16 h-16 mx-auto rounded-full bg-red-100 flex items-center justify-center">
+            <svg className="w-9 h-9 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10 3h4l1 2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1l-1 9a2 2 0 01-2 2H9a2 2 0 01-2-2l-1-9H5a1 1 0 01-1-1V6a1 1 0 011-1h3l1-2z" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">غير مصرح بالوصول</h1>
+            <p className="text-gray-600 mt-2">
+              هذه الصفحة خاصة بالمدير العام فقط ولا يمكن عرض محتوياتها إلا من قبل SuperAdmin.
+            </p>
+            <p className="text-sm text-gray-500 mt-1">إذا كنت تعتقد أن هذا خطأ، يرجى التواصل مع المدير العام.</p>
+          </div>
+          <button
+            onClick={() => router.push('/admin/dashboard')}
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+          >
+            العودة إلى لوحة التحكم
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50 to-pink-50 p-4 md:p-8">
