@@ -36,7 +36,8 @@ export default function NewProduct() {
   const [sizes, setSizes] = useState<string[]>([]);
   const [shoeSizes, setShoeSizes] = useState<string[]>([]);
   const [ageRange, setAgeRange] = useState<string[]>([]);
-  const [gender, setGender] = useState<string>(''); // Boy, Girl, Unisex
+  const [gender, setGender] = useState<string>(''); // Boy, Girl, Unisex (Kids), Men, Women, Unisex (Adults)
+  const [season, setSeason] = useState<string>(''); // Summer, Winter, All Season
   const [deliveryTime, setDeliveryTime] = useState('');
   const [rate, setRate] = useState(0);
   const [available, setAvailable] = useState(true);
@@ -367,7 +368,8 @@ export default function NewProduct() {
         shoeSizes,
         ageRange,
         colors,
-        gender, // Boy, Girl, Unisex
+        gender, // Boy, Girl, Unisex (Kids), Men, Women, Unisex (Adults)
+        season, // Summer, Winter, All Season
         
         // Additional info
         deliveryTime,
@@ -1048,53 +1050,170 @@ export default function NewProduct() {
             <div className="mb-6">
               <div className="text-sm font-semibold mb-3 text-gray-700 flex items-center gap-2">
                 <span className="text-xl">👦👧</span>
-                <span>الجنس - Gender (اختياري - للأطفال)</span>
+                <span>الجنس - Gender (اختياري)</span>
               </div>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
-                    gender === 'Boy'
-                      ? 'bg-blue-500 text-white border-blue-600 shadow-lg'
-                      : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-md text-gray-700'
-                  }`}
-                  onClick={() => setGender(gender === 'Boy' ? '' : 'Boy')}
-                >
-                  <span className="text-xl">👦</span>
-                  <span>أولاد | Boys</span>
-                </button>
-                
-                <button
-                  type="button"
-                  className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
-                    gender === 'Girl'
-                      ? 'bg-pink-500 text-white border-pink-600 shadow-lg'
-                      : 'bg-white border-gray-200 hover:border-pink-300 hover:shadow-md text-gray-700'
-                  }`}
-                  onClick={() => setGender(gender === 'Girl' ? '' : 'Girl')}
-                >
-                  <span className="text-xl">👧</span>
-                  <span>بنات | Girls</span>
-                </button>
-                
-                <button
-                  type="button"
-                  className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
-                    gender === 'Unisex'
-                      ? 'bg-purple-500 text-white border-purple-600 shadow-lg'
-                      : 'bg-white border-gray-200 hover:border-purple-300 hover:shadow-md text-gray-700'
-                  }`}
-                  onClick={() => setGender(gender === 'Unisex' ? '' : 'Unisex')}
-                >
-                  <span className="text-xl">👶</span>
-                  <span>للجنسين | Unisex</span>
-                </button>
+              
+              {/* Kids Gender */}
+              <div className="mb-4">
+                <p className="text-xs font-medium text-gray-600 mb-2">👶 للأطفال - Kids</p>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
+                      gender === 'Boy'
+                        ? 'bg-blue-500 text-white border-blue-600 shadow-lg'
+                        : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-md text-gray-700'
+                    }`}
+                    onClick={() => setGender(gender === 'Boy' ? '' : 'Boy')}
+                  >
+                    <span className="text-xl">👦</span>
+                    <span>أولاد | Boys</span>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
+                      gender === 'Girl'
+                        ? 'bg-pink-500 text-white border-pink-600 shadow-lg'
+                        : 'bg-white border-gray-200 hover:border-pink-300 hover:shadow-md text-gray-700'
+                    }`}
+                    onClick={() => setGender(gender === 'Girl' ? '' : 'Girl')}
+                  >
+                    <span className="text-xl">👧</span>
+                    <span>بنات | Girls</span>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
+                      gender === 'Unisex-Kids'
+                        ? 'bg-purple-500 text-white border-purple-600 shadow-lg'
+                        : 'bg-white border-gray-200 hover:border-purple-300 hover:shadow-md text-gray-700'
+                    }`}
+                    onClick={() => setGender(gender === 'Unisex-Kids' ? '' : 'Unisex-Kids')}
+                  >
+                    <span className="text-xl">👶</span>
+                    <span>للجنسين (أطفال) | Unisex Kids</span>
+                  </button>
+                </div>
+              </div>
+              
+              {/* Adults Gender */}
+              <div>
+                <p className="text-xs font-medium text-gray-600 mb-2">👨👩 للكبار - Adults</p>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
+                      gender === 'Men'
+                        ? 'bg-indigo-500 text-white border-indigo-600 shadow-lg'
+                        : 'bg-white border-gray-200 hover:border-indigo-300 hover:shadow-md text-gray-700'
+                    }`}
+                    onClick={() => setGender(gender === 'Men' ? '' : 'Men')}
+                  >
+                    <span className="text-xl">👨</span>
+                    <span>رجال | Men</span>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
+                      gender === 'Women'
+                        ? 'bg-rose-500 text-white border-rose-600 shadow-lg'
+                        : 'bg-white border-gray-200 hover:border-rose-300 hover:shadow-md text-gray-700'
+                    }`}
+                    onClick={() => setGender(gender === 'Women' ? '' : 'Women')}
+                  >
+                    <span className="text-xl">👩</span>
+                    <span>نساء | Women</span>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
+                      gender === 'Unisex'
+                        ? 'bg-teal-500 text-white border-teal-600 shadow-lg'
+                        : 'bg-white border-gray-200 hover:border-teal-300 hover:shadow-md text-gray-700'
+                    }`}
+                    onClick={() => setGender(gender === 'Unisex' ? '' : 'Unisex')}
+                  >
+                    <span className="text-xl">🧑</span>
+                    <span>للجنسين (كبار) | Unisex Adults</span>
+                  </button>
+                </div>
               </div>
               
               {gender && (
                 <div className="mt-3 p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
                   <span className="text-sm font-medium text-purple-800">
-                    ✓ محدد: {gender === 'Boy' ? '👦 أولاد' : gender === 'Girl' ? '👧 بنات' : '👶 للجنسين'}
+                    ✓ محدد: {
+                      gender === 'Boy' ? '👦 أولاد' : 
+                      gender === 'Girl' ? '👧 بنات' : 
+                      gender === 'Unisex-Kids' ? '👶 للجنسين (أطفال)' :
+                      gender === 'Men' ? '👨 رجال' :
+                      gender === 'Women' ? '👩 نساء' :
+                      gender === 'Unisex' ? '🧑 للجنسين (كبار)' : ''
+                    }
+                  </span>
+                </div>
+              )}
+            </div>
+            
+            {/* Season Selection */}
+            <div className="mb-6">
+              <div className="text-sm font-semibold mb-3 text-gray-700 flex items-center gap-2">
+                <span className="text-xl">🌞❄️</span>
+                <span>الموسم - Season (اختياري)</span>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
+                    season === 'Summer'
+                      ? 'bg-yellow-500 text-white border-yellow-600 shadow-lg'
+                      : 'bg-white border-gray-200 hover:border-yellow-300 hover:shadow-md text-gray-700'
+                  }`}
+                  onClick={() => setSeason(season === 'Summer' ? '' : 'Summer')}
+                >
+                  <span className="text-xl">☀️</span>
+                  <span>صيفي | Summer</span>
+                </button>
+                
+                <button
+                  type="button"
+                  className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
+                    season === 'Winter'
+                      ? 'bg-cyan-500 text-white border-cyan-600 shadow-lg'
+                      : 'bg-white border-gray-200 hover:border-cyan-300 hover:shadow-md text-gray-700'
+                  }`}
+                  onClick={() => setSeason(season === 'Winter' ? '' : 'Winter')}
+                >
+                  <span className="text-xl">❄️</span>
+                  <span>شتوي | Winter</span>
+                </button>
+                
+                <button
+                  type="button"
+                  className={`px-6 py-3 rounded-xl border-2 font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 ${
+                    season === 'All-Season'
+                      ? 'bg-green-500 text-white border-green-600 shadow-lg'
+                      : 'bg-white border-gray-200 hover:border-green-300 hover:shadow-md text-gray-700'
+                  }`}
+                  onClick={() => setSeason(season === 'All-Season' ? '' : 'All-Season')}
+                >
+                  <span className="text-xl">🍃</span>
+                  <span>جميع المواسم | All Season</span>
+                </button>
+              </div>
+              
+              {season && (
+                <div className="mt-3 p-3 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200">
+                  <span className="text-sm font-medium text-blue-800">
+                    ✓ موسم: {
+                      season === 'Summer' ? '☀️ صيفي' : 
+                      season === 'Winter' ? '❄️ شتوي' : 
+                      season === 'All-Season' ? '🍃 جميع المواسم' : ''
+                    }
                   </span>
                 </div>
               )}

@@ -17,7 +17,15 @@
 ```jsx
 {product.colors && product.colors.length > 0 && (
   <View style={styles.section}>
-    <Text style={styles.sectionTitle}>Available Colors | الألوان المتاحة</Text>
+   ├─────────────────────────────────┤
+│  👶 Age Range                    │
+│  [2-3 years] [3-4 years]        │
+├─────────────────────────────────┤
+│  👦 Gender: أولاد | Boys         │
+├─────────────────────────────────┤
+│  ☀️ Season: صيفي | Summer        │
+├─────────────────────────────────┤
+│  🚚 Delivery: 2-3 days          │style={styles.sectionTitle}>Available Colors | الألوان المتاحة</Text>
     <View style={styles.colorsContainer}>
       {product.colors.map((color, index) => (
         <View key={index} style={styles.colorItem}>
@@ -132,7 +140,7 @@
 
 ---
 
-### 7️⃣ جنس الطفل (Gender - للأطفال)
+### 7️⃣ جنس الطفل/الكبار (Gender)
 
 ```jsx
 {product.gender && (
@@ -140,12 +148,44 @@
     <Text style={styles.sectionTitle}>Gender | الجنس</Text>
     <View style={styles.genderBadge}>
       <Text style={styles.genderIcon}>
-        {product.gender === 'Boy' ? '👦' : product.gender === 'Girl' ? '👧' : '👶'}
+        {product.gender === 'Boy' ? '👦' : 
+         product.gender === 'Girl' ? '👧' : 
+         product.gender === 'Unisex-Kids' ? '👶' :
+         product.gender === 'Men' ? '👨' :
+         product.gender === 'Women' ? '👩' :
+         product.gender === 'Unisex' ? '🧑' : ''}
       </Text>
       <Text style={styles.genderText}>
         {product.gender === 'Boy' ? 'أولاد | Boys' : 
          product.gender === 'Girl' ? 'بنات | Girls' : 
-         'للجنسين | Unisex'}
+         product.gender === 'Unisex-Kids' ? 'للجنسين (أطفال) | Unisex Kids' :
+         product.gender === 'Men' ? 'رجال | Men' :
+         product.gender === 'Women' ? 'نساء | Women' :
+         product.gender === 'Unisex' ? 'للجنسين | Unisex' : ''}
+      </Text>
+    </View>
+  </View>
+)}
+```
+
+---
+
+### 8️⃣ الموسم (Season)
+
+```jsx
+{product.season && (
+  <View style={styles.seasonSection}>
+    <Text style={styles.sectionTitle}>Season | الموسم</Text>
+    <View style={styles.seasonBadge}>
+      <Text style={styles.seasonIcon}>
+        {product.season === 'Summer' ? '☀️' : 
+         product.season === 'Winter' ? '❄️' : 
+         product.season === 'All-Season' ? '🍃' : ''}
+      </Text>
+      <Text style={styles.seasonText}>
+        {product.season === 'Summer' ? 'صيفي | Summer' : 
+         product.season === 'Winter' ? 'شتوي | Winter' : 
+         product.season === 'All-Season' ? 'جميع المواسم | All Season' : ''}
       </Text>
     </View>
   </View>
@@ -328,6 +368,32 @@ const styles = StyleSheet.create({
     color: '#7B1FA2',
     fontWeight: '600',
   },
+  
+  // ========== Season ==========
+  seasonSection: {
+    marginVertical: 16,
+    paddingHorizontal: 16,
+  },
+  seasonBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#81C784',
+  },
+  seasonIcon: {
+    fontSize: 20,
+  },
+  seasonText: {
+    fontSize: 14,
+    color: '#2E7D32',
+    fontWeight: '600',
+  },
 });
 ```
 
@@ -360,7 +426,8 @@ const styles = StyleSheet.create({
   "sizes": ["S", "M", "L", "XL"],
   "shoeSizes": ["35", "36", "37", "38"],
   "ageRange": ["2-3 years", "3-4 years"],
-  "gender": "Boy", // or "Girl" or "Unisex"
+  "gender": "Boy", // Boy, Girl, Unisex-Kids, Men, Women, Unisex
+  "season": "Summer", // Summer, Winter, All-Season
   "images": ["url1", "url2", "url3"]
 }
 ```
@@ -374,7 +441,8 @@ const styles = StyleSheet.create({
 - [ ] إضافة عرض مدة التوصيل
 - [ ] إضافة عرض حالة التوفر (In Stock / Out of Stock)
 - [ ] إضافة عرض الفئة العمرية
-- [ ] إضافة عرض جنس الطفل (Boy/Girl/Unisex)
+- [ ] إضافة عرض الجنس (Boy/Girl/Men/Women/Unisex)
+- [ ] إضافة عرض الموسم (Summer/Winter/All Season)
 - [ ] اختبار على منتج حقيقي من Firebase
 - [ ] التأكد من التصميم متجاوب على جميع الشاشات
 
