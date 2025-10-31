@@ -2,8 +2,11 @@
 import admin from 'firebase-admin';
 
 if (!admin.apps.length) {
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  // Clean up environment variables - remove any trailing whitespace, newlines, etc.
+  const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
+  const storageBucket = process.env.FIREBASE_STORAGE_BUCKET?.trim();
+  
   // Handle both escaped and non-escaped newlines
   let privateKey = process.env.FIREBASE_PRIVATE_KEY;
   if (privateKey) {
@@ -18,6 +21,7 @@ if (!admin.apps.length) {
       hasClientEmail: !!clientEmail,
       hasPrivateKey: !!privateKey,
       privateKeyLength: privateKey?.length || 0,
+      projectId: projectId ? `"${projectId}" (length: ${projectId.length})` : 'missing',
     });
     throw new Error('Firebase admin credentials are not fully set in environment variables');
   }
@@ -29,7 +33,7 @@ if (!admin.apps.length) {
         clientEmail,
         privateKey,
       } as any),
-      storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+      storageBucket,
     });
     console.log('✅ Firebase Admin initialized successfully');
   } catch (e) {
