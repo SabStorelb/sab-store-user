@@ -757,20 +757,18 @@ export default function CostCalculator() {
               </ul>
             </div>
 
-            <div className="max-w-sm rounded-2xl bg-gradient-to-r from-rose-500 to-red-500 p-4 text-white shadow-lg">
-              <div className="flex items-center gap-2.5">
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10 3h4l1 2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1l-1 9a2 2 0 01-2 2H9a2 2 0 01-2-2l-1-9H5a1 1 0 01-1-1V6a1 1 0 011-1h3l1-2z" />
-                </svg>
-                <h2 className="text-lg font-semibold">تنبيه أمني</h2>
+            <aside className="flex w-full max-w-xs items-start gap-3 rounded-xl border border-rose-200 bg-rose-50/90 p-3 text-rose-700 shadow-sm lg:self-start">
+              <span className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-rose-100 text-lg">⚠️</span>
+              <div className="space-y-1 text-right">
+                <p className="text-sm font-semibold text-rose-700">تنبيه أمني</p>
+                <p className="text-xs leading-5 text-rose-600">
+                  لا تشارك أسعار الشراء أو نسب الربح خارج الإدارة العليا. شارك السعر النهائي فقط مع فريق إدخال المنتجات الموثوق.
+                </p>
+                <p className="text-[11px] leading-4 text-rose-500">
+                  Keep this data confidential. Share the final price only with trusted staff members.
+                </p>
               </div>
-              <p className="mt-2 text-xs text-white/90">
-                لا تشارك أسعار الشراء أو نسب الربح خارج الإدارة العليا. قم فقط بمشاركة السعر النهائي مع الفريق المسؤول عن إدخال المنتجات.
-              </p>
-              <p className="mt-1 text-[11px] text-white/80">
-                Keep this data confidential. Share the final price only with trusted staff members.
-              </p>
-            </div>
+            </aside>
           </div>
         </section>
 

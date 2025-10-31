@@ -91,6 +91,34 @@ const navItems: DashboardNavItem[] = [
     requiredPermission: 'canManageProducts',
   },
   {
+    key: 'warehouseSystem',
+    href: '/admin/warehouse',
+    labelEn: 'Warehouse',
+    labelAr: 'نظام المستودعات',
+    color: 'from-slate-600 to-slate-800',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 7l9-4 9 4v10a2 2 0 01-2 2h-2a2 2 0 01-2-2v-3H7v3a2 2 0 01-2 2H3a2 2 0 01-2-2V7z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 21V10h6v11" />
+      </svg>
+    ),
+    requiredPermission: 'canManageProducts',
+  },
+  {
+    key: 'vendorSystem',
+    href: '/admin/vendors',
+    labelEn: 'Vendors',
+    labelAr: 'نظام البائعين',
+    color: 'from-amber-500 to-orange-500',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16 11a4 4 0 10-8 0 4 4 0 008 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 15c-4.418 0-8 2.015-8 4.5V21h16v-1.5c0-2.485-3.582-4.5-8-4.5z" />
+      </svg>
+    ),
+    requiredPermission: 'canManageProducts',
+  },
+  {
     key: 'brands',
     href: '/admin/brands',
     labelEn: 'Brands',
@@ -202,6 +230,20 @@ const statConfig: StatConfigItem[] = [
     key: 'products', labelEn: 'Products', labelAr: 'المنتجات', color: 'bg-gradient-to-br from-purple-400 via-purple-500 to-fuchsia-500',
     icon: (<svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M20 13V7a2 2 0 00-2-2H6a2 2 0 00-2 2v6m16 0a2 2 0 01-2 2H6a2 2 0 01-2-2m16 0V7m0 6v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6" /></svg>),
     chartData: [45, 52, 48, 58, 62, 70, 75],
+    hasQuickView: true,
+    requiredPermission: 'canManageProducts',
+  },
+  {
+    key: 'warehouseSystem', labelEn: 'Warehouse', labelAr: 'نظام المستودعات', color: 'bg-gradient-to-br from-slate-500 via-slate-600 to-gray-700',
+    icon: (<svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 7l9-4 9 4v10a2 2 0 01-2 2h-2a2 2 0 01-2-2v-3H7v3a2 2 0 01-2 2H3a2 2 0 01-2-2V7z" /><path strokeLinecap="round" strokeLinejoin="round" d="M9 21V10h6v11" /></svg>),
+    chartData: [120, 118, 122, 128, 135, 140, 144],
+    hasQuickView: true,
+    requiredPermission: 'canManageProducts',
+  },
+  {
+    key: 'vendorSystem', labelEn: 'Vendors', labelAr: 'نظام البائعين', color: 'bg-gradient-to-br from-amber-400 via-orange-500 to-orange-600',
+    icon: (<svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16 11a4 4 0 10-8 0 4 4 0 008 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 15c-4.418 0-8 2.015-8 4.5V21h16v-1.5c0-2.485-3.582-4.5-8-4.5z" /></svg>),
+    chartData: [4, 5, 6, 7, 8, 9, 10],
     hasQuickView: true,
     requiredPermission: 'canManageProducts',
   },
@@ -439,6 +481,101 @@ export default function AdminDashboard() {
             }
           } catch {
             newStats[item.key] = 0;
+            newTrends[item.key] = 0;
+          }
+
+        } else if (item.key === 'warehouseSystem') {
+          try {
+            const snap = await getDocs(collection(firebaseDb, 'products'));
+            let totalStock = 0;
+            let lowStock = 0;
+            let outOfStock = 0;
+
+            for (const docSnap of snap.docs) {
+              const data = docSnap.data();
+              const stockValue = Number(data.stock ?? data.inventory ?? 0);
+              if (!Number.isNaN(stockValue)) {
+                totalStock += stockValue;
+                if (stockValue <= 0) {
+                  outOfStock += 1;
+                } else if (stockValue < 5) {
+                  lowStock += 1;
+                }
+              }
+            }
+
+            newStats[item.key] = totalStock;
+            newDetailedStats[item.key] = {
+              total: snap.size,
+              totalStock,
+              lowStock,
+              outOfStock,
+            };
+
+            const oldProducts = snap.docs.filter(doc => {
+              const createdAt = doc.data().createdAt;
+              return createdAt && createdAt.toDate && createdAt.toDate() < sevenDaysAgoTimestamp.toDate();
+            }).length;
+            const newProducts = snap.size - oldProducts;
+            if (oldProducts > 0) {
+              newTrends[item.key] = Math.round((newProducts / oldProducts) * 100);
+            } else {
+              newTrends[item.key] = newProducts > 0 ? 100 : 0;
+            }
+          } catch {
+            newStats[item.key] = 0;
+            newDetailedStats[item.key] = {
+              total: 0,
+              totalStock: 0,
+              lowStock: 0,
+              outOfStock: 0,
+            };
+            newTrends[item.key] = 0;
+          }
+
+        } else if (item.key === 'vendorSystem') {
+          try {
+            const suppliersSnap = await getDocs(collection(firebaseDb, 'suppliers'));
+            const productsSnap = await getDocs(collection(firebaseDb, 'products'));
+            const vendorProducts = productsSnap.docs.filter(doc => {
+              const data = doc.data();
+              const vendorId = data.vendorId || data.productVendorId || data.productVendor;
+              return typeof vendorId === 'string' && vendorId.trim().length > 0;
+            });
+
+            const activeVendors = new Set(
+              vendorProducts
+                .map(doc => {
+                  const data = doc.data();
+                  return (data.vendorId || data.productVendorId || data.productVendor) as string | undefined;
+                })
+                .filter(Boolean)
+            ).size;
+
+            newStats[item.key] = suppliersSnap.size;
+            newDetailedStats[item.key] = {
+              total: suppliersSnap.size,
+              vendorProducts: vendorProducts.length,
+              activeVendors,
+            };
+
+            const oldVendorProducts = vendorProducts.filter(doc => {
+              const createdAt = doc.data().createdAt;
+              return createdAt && createdAt.toDate && createdAt.toDate() < sevenDaysAgoTimestamp.toDate();
+            }).length;
+            const newVendorProducts = vendorProducts.length - oldVendorProducts;
+            if (oldVendorProducts > 0) {
+              newTrends[item.key] = Math.round((newVendorProducts / oldVendorProducts) * 100);
+            } else {
+              newTrends[item.key] = newVendorProducts > 0 ? 100 : 0;
+            }
+          } catch {
+            newStats[item.key] = 0;
+            newDetailedStats[item.key] = {
+              total: 0,
+              vendorProducts: 0,
+              activeVendors: 0,
+            };
             newTrends[item.key] = 0;
           }
 
@@ -687,6 +824,8 @@ export default function AdminDashboard() {
               else if (item.key === 'admins') target = '/admin/admins';
               else if (item.key === 'users') target = '/admin/users';
               else if (item.key === 'dailyStats') target = '/admin/dailyStats';
+              else if (item.key === 'warehouseSystem') target = '/admin/warehouse';
+              else if (item.key === 'vendorSystem') target = '/admin/vendors';
 
               const currentStat = stats[item.key] ?? 0;
               const detail = detailedStats[item.key];

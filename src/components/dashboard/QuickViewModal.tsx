@@ -10,6 +10,7 @@ interface QuickViewModalProps {
 }
 
 export default function QuickViewModal({ isOpen, onClose, type, title }: QuickViewModalProps) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -26,6 +27,10 @@ export default function QuickViewModal({ isOpen, onClose, type, title }: QuickVi
           q = query(collection(firebaseDb, 'products'), orderBy('createdAt', 'desc'), limit(5));
         } else if (type === 'customers') {
           q = query(collection(firebaseDb, 'users'), limit(5));
+        } else if (type === 'warehouseSystem') {
+          q = query(collection(firebaseDb, 'products'), orderBy('stock', 'desc'), limit(5));
+        } else if (type === 'vendorSystem') {
+          q = query(collection(firebaseDb, 'suppliers'), limit(5));
         } else {
           q = query(collection(firebaseDb, type), limit(5));
         }
@@ -90,6 +95,28 @@ export default function QuickViewModal({ isOpen, onClose, type, title }: QuickVi
                           </div>
                           <div className="text-sm text-gray-600">
                             السعر: ${item.price || 0} USD | المخزون: {item.stock || 0}
+                          </div>
+                        </>
+                      )}
+                      {type === 'warehouseSystem' && (
+                        <>
+                          <div className="font-bold text-lg">
+                            {typeof item.name === 'object'
+                              ? (item.name?.ar || item.name?.en || item.nameAr || item.nameEn || 'منتج')
+                              : (item.name || item.nameAr || item.nameEn || 'منتج')}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            المخزون الحالي: {item.stock ?? 0} | الفئة: {item.categoryName || item.category || 'غير محدد'}
+                          </div>
+                        </>
+                      )}
+                      {type === 'vendorSystem' && (
+                        <>
+                          <div className="font-bold text-lg">
+                            {item.nameAr || item.name || item.company || 'بائع'}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {item.email ? `البريد: ${item.email}` : 'لا يوجد بريد مسجل'}
                           </div>
                         </>
                       )}
