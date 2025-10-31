@@ -22,6 +22,26 @@ export default function EditProduct() {
   const [brand, setBrand] = useState('');
   const [featured, setFeatured] = useState(false);
   
+  // New fields - Variants & Details (will be used when UI sections are added)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [sizes, setSizes] = useState<string[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [shoeSizes, setShoeSizes] = useState<string[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [ageRange, setAgeRange] = useState<string[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [colors, setColors] = useState<{ar: string, en: string, hex: string}[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [gender, setGender] = useState<string>('');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [season, setSeason] = useState<string>('');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [deliveryTime, setDeliveryTime] = useState('');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [rate, setRate] = useState(0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [available, setAvailable] = useState(true);
+  
   // Images
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [newImages, setNewImages] = useState<File[]>([]);
@@ -29,9 +49,9 @@ export default function EditProduct() {
   const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
   
   // Dropdowns
-  const [categories, setCategories] = useState<any[]>([]);
-  const [subcategories, setSubcategories] = useState<any[]>([]);
-  const [brands, setBrands] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Array<{id: string, nameAr: string, nameEn: string}>>([]);
+  const [subcategories, setSubcategories] = useState<Array<{id: string, nameAr: string, nameEn: string, categoryId: string}>>([]);
+  const [brands, setBrands] = useState<Array<{id: string, nameAr: string, nameEn: string}>>([]);
   
   // UI State
   const [loading, setLoading] = useState(false);
@@ -75,6 +95,17 @@ export default function EditProduct() {
           setBrand(data.brandId || '');
           setFeatured(data.featured || false);
           setExistingImages(data.images || []);
+          
+          // Load new fields - Variants & Details
+          setSizes(data.sizes || []);
+          setShoeSizes(data.shoeSizes || []);
+          setAgeRange(data.ageRange || []);
+          setColors(data.colors || []);
+          setGender(data.gender || '');
+          setSeason(data.season || '');
+          setDeliveryTime(data.deliveryTime || '');
+          setRate(data.rate || data.rating || 0);
+          setAvailable(data.available !== undefined ? data.available : true);
         }
       } catch (error) {
         console.error('Error loading product:', error);
@@ -100,8 +131,16 @@ export default function EditProduct() {
         getDocs(collection(firebaseDb, 'brands')),
       ]);
       
-      setCategories(catsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      setBrands(brandsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setCategories(catsSnap.docs.map(doc => ({ 
+        id: doc.id, 
+        nameAr: doc.data().nameAr || '',
+        nameEn: doc.data().nameEn || ''
+      })));
+      setBrands(brandsSnap.docs.map(doc => ({ 
+        id: doc.id,
+        nameAr: doc.data().nameAr || '',
+        nameEn: doc.data().nameEn || ''
+      })));
     }
     
     loadDropdowns();
@@ -116,7 +155,12 @@ export default function EditProduct() {
 
     async function loadSubcategories() {
       const subsSnap = await getDocs(collection(firebaseDb, 'categories', category, 'subcategory'));
-      setSubcategories(subsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setSubcategories(subsSnap.docs.map(doc => ({ 
+        id: doc.id,
+        nameAr: doc.data().nameAr || '',
+        nameEn: doc.data().nameEn || '',
+        categoryId: doc.data().categoryId || category
+      })));
     }
     
     loadSubcategories();
@@ -175,7 +219,7 @@ export default function EditProduct() {
         try {
           const imageRef = ref(firebaseStorage, imageUrl);
           await deleteObject(imageRef);
-        } catch (err) {
+        } catch {
           console.log('Could not delete image:', imageUrl);
         }
       }
@@ -218,13 +262,13 @@ export default function EditProduct() {
         
         // Category & Brand
         categoryId: category,
-        categoryName: selectedCategory?.name || '',
+        categoryName: selectedCategory?.nameEn || '',
         categoryNameAr: selectedCategory?.nameAr || '',
         subcategoryId: subcategory || '',
-        subcategoryName: selectedSubcategory?.name || '',
+        subcategoryName: selectedSubcategory?.nameEn || '',
         subcategoryNameAr: selectedSubcategory?.nameAr || '',
         brandId: brand || '',
-        brandName: selectedBrand?.name || '',
+        brandName: selectedBrand?.nameEn || '',
         
         // Images
         images: finalImages,
@@ -248,9 +292,9 @@ export default function EditProduct() {
         router.push('/admin/products');
       }, 1000);
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating product:', error);
-      setUploadStatus(`خطأ: ${error.message}`);
+      setUploadStatus(`خطأ: ${error instanceof Error ? error.message : 'حدث خطأ غير متوقع'}`);
       setTimeout(() => setLoading(false), 2000);
     }
   }
@@ -421,7 +465,7 @@ export default function EditProduct() {
               <option value="">اختر القسم</option>
               {categories.map(cat => (
                 <option key={cat.id} value={cat.id}>
-                  {cat.nameAr} - {cat.name}
+                  {cat.nameAr} - {cat.nameEn}
                 </option>
               ))}
             </select>
@@ -439,7 +483,7 @@ export default function EditProduct() {
               <option value="">اختر القسم الفرعي (اختياري)</option>
               {subcategories.map(sub => (
                 <option key={sub.id} value={sub.id}>
-                  {sub.nameAr} - {sub.name}
+                  {sub.nameAr} - {sub.nameEn}
                 </option>
               ))}
             </select>
@@ -458,7 +502,7 @@ export default function EditProduct() {
           >
             <option value="">اختر الماركة (اختياري)</option>
             {brands.map(b => (
-              <option key={b.id} value={b.id}>{b.name}</option>
+              <option key={b.id} value={b.id}>{b.nameAr} - {b.nameEn}</option>
             ))}
           </select>
         </div>
@@ -487,6 +531,7 @@ export default function EditProduct() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {existingImages.map((imageUrl, index) => (
                 <div key={index} className="relative group">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={imageUrl}
                     alt={`صورة ${index + 1}`}
@@ -524,6 +569,7 @@ export default function EditProduct() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
               {newImagePreviews.map((preview, index) => (
                 <div key={index} className="relative group">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={preview}
                     alt={`معاينة ${index + 1}`}
