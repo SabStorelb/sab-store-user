@@ -262,15 +262,16 @@ export default function AdminDashboard() {
     let isMounted = true;
 
     async function fetchStats() {
-      setLoading(true);
-  const newStats: Record<string, number> = {};
-  const newDetailedStats: DetailedStatsMap = {};
-  const newTrends: Record<string, number> = {};
+      try {
+        setLoading(true);
+        const newStats: Record<string, number> = {};
+        const newDetailedStats: DetailedStatsMap = {};
+        const newTrends: Record<string, number> = {};
 
-      if (visibleStatConfig.length === 0) {
-        if (!isMounted) return;
-        setStats(newStats);
-        setDetailedStats(newDetailedStats);
+        if (visibleStatConfig.length === 0) {
+          if (!isMounted) return;
+          setStats(newStats);
+          setDetailedStats(newDetailedStats);
         setTrends(newTrends);
         setLoading(false);
         return;
@@ -281,245 +282,316 @@ export default function AdminDashboard() {
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       const sevenDaysAgoTimestamp = Timestamp.fromDate(sevenDaysAgo);
 
-      for (const item of visibleStatConfig) {
-        if (item.key === 'subcategories') {
-          // ✅ جمع الأقسام الفرعية داخل كل قسم
+      // ⚡ تحميل جميع البيانات بشكل متوازي
+      const dataPromises: Record<string, Promise<any>> = {};
+      
+      // تحديد البيانات المطلوبة
+      const needsCategories = visibleStatConfig.some(item => item.key === 'categories' || item.key === 'subcategories');
+      const needsUsers = visibleStatConfig.some(item => item.key === 'customers');
+      const needsProducts = visibleStatConfig.some(item => item.key === 'products' || item.key === 'warehouseSystem' || item.key === 'vendorSystem');
+      const needsSuppliers = visibleStatConfig.some(item => item.key === 'vendorSystem');
+      const needsOrders = visibleStatConfig.some(item => item.key === 'orders');
+
+      // تحميل البيانات المطلوبة فقط
+      if (needsCategories) {
+        dataPromises.categories = getDocs(collection(firebaseDb, 'categories'));
+      }
+      if (needsUsers) {
+        dataPromises.users = getDocs(collection(firebaseDb, 'users'));
+      }
+      if (needsProducts) {
+        dataPromises.products = getDocs(collection(firebaseDb, 'products'));
+      }
+      if (needsSuppliers) {
+        dataPromises.suppliers = getDocs(collection(firebaseDb, 'suppliers'));
+      }
+      if (needsOrders) {
+        dataPromises.orders = getDocs(collection(firebaseDb, 'orders'));
+      }
+
+      // ⚡ تنفيذ جميع الطلبات بشكل متوازي
+      const loadedData = await Promise.all(
+        Object.entries(dataPromises).map(async ([key, promise]) => {
           try {
-            const categoriesSnap = await getDocs(collection(firebaseDb, 'categories'));
-            let subCount = 0;
-            for (const catDoc of categoriesSnap.docs) {
-              try {
-                const subSnap = await getDocs(collection(firebaseDb, 'categories', catDoc.id, 'subcategory'));
-                subCount += subSnap.size;
-              } catch {}
-            }
-            newStats[item.key] = subCount;
-          } catch {
-            newStats[item.key] = 0;
+            const result = await promise;
+            return [key, result];
+          } catch (error) {
+            console.error(`Error loading ${key}:`, error);
+            return [key, null];
           }
-  
-        } else if (item.key === 'customers') {
-          // ✅ تعديل خاص للعملاء: استبعاد المدراء + حساب النشطين
-          try {
-            const snap = await getDocs(collection(firebaseDb, 'users'));
-            const nonAdmins = snap.docs.filter(doc => !doc.data().isAdmin);
-            newStats[item.key] = nonAdmins.length;
-            
-            // حساب العملاء النشطين خلال آخر 30 يوم
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            const activeCustomers = nonAdmins.filter(doc => {
-              const lastActive = doc.data().lastActive;
-              if (lastActive && lastActive.toDate) {
-                return lastActive.toDate() >= thirtyDaysAgo;
-              }
-              return false;
-            });
-            
-            newDetailedStats[item.key] = {
-              total: nonAdmins.length,
-              active: activeCustomers.length,
-              inactive: nonAdmins.length - activeCustomers.length,
-            };
-            
-            // حساب النسبة المئوية - عملاء جدد خلال 7 أيام
-            const oldCustomers = nonAdmins.filter(doc => {
-              const createdAt = doc.data().createdAt;
-              return createdAt && createdAt.toDate && createdAt.toDate() < sevenDaysAgoTimestamp.toDate();
-            }).length;
-            
-            const newCustomers = nonAdmins.length - oldCustomers;
-            if (oldCustomers > 0) {
-              newTrends[item.key] = Math.round((newCustomers / oldCustomers) * 100);
-            } else {
-              newTrends[item.key] = newCustomers > 0 ? 100 : 0;
-            }
-          } catch {
-            newStats[item.key] = 0;
-            newTrends[item.key] = 0;
-          }
+        })
+      );
 
-        } else if (item.key === 'warehouseSystem') {
-          try {
-            const snap = await getDocs(collection(firebaseDb, 'products'));
-            let totalStock = 0;
-            let lowStock = 0;
-            let outOfStock = 0;
+      const data: Record<string, any> = Object.fromEntries(loadedData);
 
-            for (const docSnap of snap.docs) {
-              const data = docSnap.data();
-              const stockValue = Number(data.stock ?? data.inventory ?? 0);
-              if (!Number.isNaN(stockValue)) {
-                totalStock += stockValue;
-                if (stockValue <= 0) {
-                  outOfStock += 1;
-                } else if (stockValue < 5) {
-                  lowStock += 1;
-                }
-              }
-            }
-
-            newStats[item.key] = totalStock;
-            newDetailedStats[item.key] = {
-              total: snap.size,
-              totalStock,
-              lowStock,
-              outOfStock,
-            };
-
-            const oldProducts = snap.docs.filter(doc => {
-              const createdAt = doc.data().createdAt;
-              return createdAt && createdAt.toDate && createdAt.toDate() < sevenDaysAgoTimestamp.toDate();
-            }).length;
-            const newProducts = snap.size - oldProducts;
-            if (oldProducts > 0) {
-              newTrends[item.key] = Math.round((newProducts / oldProducts) * 100);
-            } else {
-              newTrends[item.key] = newProducts > 0 ? 100 : 0;
-            }
-          } catch {
-            newStats[item.key] = 0;
-            newDetailedStats[item.key] = {
-              total: 0,
-              totalStock: 0,
-              lowStock: 0,
-              outOfStock: 0,
-            };
-            newTrends[item.key] = 0;
-          }
-
-        } else if (item.key === 'vendorSystem') {
-          try {
-            const suppliersSnap = await getDocs(collection(firebaseDb, 'suppliers'));
-            const productsSnap = await getDocs(collection(firebaseDb, 'products'));
-            const vendorProducts = productsSnap.docs.filter(doc => {
-              const data = doc.data();
-              const vendorId = data.vendorId || data.productVendorId || data.productVendor;
-              return typeof vendorId === 'string' && vendorId.trim().length > 0;
-            });
-
-            const activeVendors = new Set(
-              vendorProducts
-                .map(doc => {
-                  const data = doc.data();
-                  return (data.vendorId || data.productVendorId || data.productVendor) as string | undefined;
-                })
-                .filter(Boolean)
-            ).size;
-
-            newStats[item.key] = suppliersSnap.size;
-            newDetailedStats[item.key] = {
-              total: suppliersSnap.size,
-              vendorProducts: vendorProducts.length,
-              activeVendors,
-            };
-
-            const oldVendorProducts = vendorProducts.filter(doc => {
-              const createdAt = doc.data().createdAt;
-              return createdAt && createdAt.toDate && createdAt.toDate() < sevenDaysAgoTimestamp.toDate();
-            }).length;
-            const newVendorProducts = vendorProducts.length - oldVendorProducts;
-            if (oldVendorProducts > 0) {
-              newTrends[item.key] = Math.round((newVendorProducts / oldVendorProducts) * 100);
-            } else {
-              newTrends[item.key] = newVendorProducts > 0 ? 100 : 0;
-            }
-          } catch {
-            newStats[item.key] = 0;
-            newDetailedStats[item.key] = {
-              total: 0,
-              vendorProducts: 0,
-              activeVendors: 0,
-            };
-            newTrends[item.key] = 0;
-          }
-
-        } else if (item.key === 'orders') {
-          // ✅ إضافة تفاصيل الطلبات مع حالة الدفع والحالة الفعلية
-          try {
-            const snap = await getDocs(collection(firebaseDb, 'orders'));
-            newStats[item.key] = snap.size;
-            
-            // حساب الطلبات حسب حالة الدفع
-            const paidOrders = snap.docs.filter(doc => doc.data().paymentStatus === 'paid' || doc.data().isPaid === true);
-            
-            // حساب الطلبات حسب الحالة
-            const openOrders = snap.docs.filter(doc => {
-              const status = doc.data().status;
-              return status === 'Received' || status === 'Under Review' || status === 'Preparing' || 
-                     status === 'Shipped' || status === 'Arrived Hub' || status === 'Out for Delivery' ||
-                     status === 'Awaiting Payment';
-            });
-            
-            const closedOrders = snap.docs.filter(doc => {
-              const status = doc.data().status;
-              return status === 'Delivered' || status === 'Cancelled' || status === 'Delivery Failed';
-            });
-            
-            const newOrders = snap.docs.filter(doc => {
-              const status = doc.data().status;
-              return status === 'Received' || status === 'Under Review' || !status;
-            });
-            
-            newDetailedStats[item.key] = {
-              total: snap.size,
-              paid: paidOrders.length,
-              open: openOrders.length,
-              closed: closedOrders.length,
-              new: newOrders.length,
-            };
-            
-            // حساب النسبة المئوية - طلبات جديدة خلال 7 أيام
-            const oldOrders = snap.docs.filter(doc => {
-              const createdAt = doc.data().createdAt;
-              return createdAt && createdAt.toDate && createdAt.toDate() < sevenDaysAgoTimestamp.toDate();
-            }).length;
-            
-            const newOrdersCount = snap.size - oldOrders;
-            if (oldOrders > 0) {
-              newTrends[item.key] = Math.round((newOrdersCount / oldOrders) * 100);
-            } else {
-              newTrends[item.key] = newOrdersCount > 0 ? 100 : 0;
-            }
-          } catch {
-            newStats[item.key] = 0;
-            newTrends[item.key] = 0;
-          }
-  
-        } else {
-          // ✅ باقي الإحصائيات العادية
-          try {
-            const snap = await getDocs(collection(firebaseDb, item.key));
-            newStats[item.key] = snap.size;
-            
-            // حساب النسبة المئوية للتغيير
-            if (snap.docs.length > 0 && snap.docs[0].data().createdAt) {
-              const oldCount = snap.docs.filter(doc => {
-                const createdAt = doc.data().createdAt;
-                return createdAt && createdAt.toDate && createdAt.toDate() < sevenDaysAgoTimestamp.toDate();
-              }).length;
-              
-              const newCount = snap.size - oldCount;
-              if (oldCount > 0) {
-                newTrends[item.key] = Math.round((newCount / oldCount) * 100);
+      // معالجة البيانات لكل بطاقة
+        for (const item of visibleStatConfig) {
+          if (item.key === 'subcategories') {
+            try {
+              if (data.categories) {
+                const categoriesSnap = data.categories;
+                const subPromises = categoriesSnap.docs.map(async (catDoc: any) => {
+                  try {
+                    const subSnap = await getDocs(collection(firebaseDb, 'categories', catDoc.id, 'subcategory'));
+                    return subSnap.size;
+                  } catch {
+                    return 0;
+                  }
+                });
+                const subCounts = await Promise.all(subPromises);
+                newStats[item.key] = subCounts.reduce((sum, count) => sum + count, 0);
               } else {
-                newTrends[item.key] = newCount > 0 ? 100 : 0;
+                newStats[item.key] = 0;
               }
-            } else {
+            } catch {
+              newStats[item.key] = 0;
+            }
+  
+          } else if (item.key === 'customers') {
+            try {
+              if (data.users) {
+                const snap = data.users;
+                const nonAdmins = snap.docs.filter((doc: any) => !doc.data().isAdmin);
+                newStats[item.key] = nonAdmins.length;
+                
+                const thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                const activeCustomers = nonAdmins.filter((doc: any) => {
+                  const lastActive = doc.data().lastActive;
+                  if (lastActive && lastActive.toDate) {
+                    return lastActive.toDate() >= thirtyDaysAgo;
+                  }
+                  return false;
+                });
+                
+                newDetailedStats[item.key] = {
+                  total: nonAdmins.length,
+                  active: activeCustomers.length,
+                  inactive: nonAdmins.length - activeCustomers.length,
+                };
+                
+                const oldCustomers = nonAdmins.filter((doc: any) => {
+                  const createdAt = doc.data().createdAt;
+                  return createdAt && createdAt.toDate && createdAt.toDate() < sevenDaysAgoTimestamp.toDate();
+                }).length;
+                
+                const newCustomers = nonAdmins.length - oldCustomers;
+                if (oldCustomers > 0) {
+                  newTrends[item.key] = Math.round((newCustomers / oldCustomers) * 100);
+                } else {
+                  newTrends[item.key] = newCustomers > 0 ? 100 : 0;
+                }
+              } else {
+                newStats[item.key] = 0;
+                newTrends[item.key] = 0;
+              }
+            } catch {
+              newStats[item.key] = 0;
               newTrends[item.key] = 0;
             }
-          } catch {
-            newStats[item.key] = 0;
-            newTrends[item.key] = 0;
+
+          } else if (item.key === 'warehouseSystem') {
+            try {
+              if (data.products) {
+                const snap = data.products;
+                let totalStock = 0;
+                let lowStock = 0;
+                let outOfStock = 0;
+
+                for (const docSnap of snap.docs) {
+                  const productData = docSnap.data();
+                  const stockValue = Number(productData.stock ?? productData.inventory ?? 0);
+                  if (!Number.isNaN(stockValue)) {
+                    totalStock += stockValue;
+                    if (stockValue <= 0) {
+                      outOfStock += 1;
+                    } else if (stockValue < 5) {
+                      lowStock += 1;
+                    }
+                  }
+                }
+
+                newStats[item.key] = totalStock;
+                newDetailedStats[item.key] = {
+                  total: snap.size,
+                  totalStock,
+                  lowStock,
+                  outOfStock,
+                };
+
+                const oldProducts = snap.docs.filter((doc: any) => {
+                  const createdAt = doc.data().createdAt;
+                  return createdAt && createdAt.toDate && createdAt.toDate() < sevenDaysAgoTimestamp.toDate();
+                }).length;
+                const newProducts = snap.size - oldProducts;
+                if (oldProducts > 0) {
+                  newTrends[item.key] = Math.round((newProducts / oldProducts) * 100);
+                } else {
+                  newTrends[item.key] = newProducts > 0 ? 100 : 0;
+                }
+              } else {
+                newStats[item.key] = 0;
+                newDetailedStats[item.key] = { total: 0, totalStock: 0, lowStock: 0, outOfStock: 0 };
+                newTrends[item.key] = 0;
+              }
+            } catch {
+              newStats[item.key] = 0;
+              newDetailedStats[item.key] = {
+                total: 0,
+                totalStock: 0,
+                lowStock: 0,
+                outOfStock: 0,
+              };
+              newTrends[item.key] = 0;
+            }
+
+          } else if (item.key === 'vendorSystem') {
+            try {
+              if (data.suppliers && data.products) {
+                const suppliersSnap = data.suppliers;
+                const productsSnap = data.products;
+                const vendorProducts = productsSnap.docs.filter((doc: any) => {
+                  const productData = doc.data();
+                  const vendorId = productData.vendorId || productData.productVendorId || productData.productVendor;
+                  return typeof vendorId === 'string' && vendorId.trim().length > 0;
+                });
+
+                const activeVendors = new Set(
+                  vendorProducts
+                    .map((doc: any) => {
+                      const productData = doc.data();
+                      return (productData.vendorId || productData.productVendorId || productData.productVendor) as string | undefined;
+                    })
+                    .filter(Boolean)
+                ).size;
+
+                newStats[item.key] = suppliersSnap.size;
+                newDetailedStats[item.key] = {
+                  total: suppliersSnap.size,
+                  vendorProducts: vendorProducts.length,
+                  activeVendors,
+                };
+
+                const oldVendorProducts = vendorProducts.filter((doc: any) => {
+                  const createdAt = doc.data().createdAt;
+                  return createdAt && createdAt.toDate && createdAt.toDate() < sevenDaysAgoTimestamp.toDate();
+                }).length;
+                const newVendorProducts = vendorProducts.length - oldVendorProducts;
+                if (oldVendorProducts > 0) {
+                  newTrends[item.key] = Math.round((newVendorProducts / oldVendorProducts) * 100);
+                } else {
+                  newTrends[item.key] = newVendorProducts > 0 ? 100 : 0;
+                }
+              } else {
+                newStats[item.key] = 0;
+                newDetailedStats[item.key] = { total: 0, vendorProducts: 0, activeVendors: 0 };
+                newTrends[item.key] = 0;
+              }
+            } catch {
+              newStats[item.key] = 0;
+              newDetailedStats[item.key] = {
+                total: 0,
+                vendorProducts: 0,
+                activeVendors: 0,
+              };
+              newTrends[item.key] = 0;
+            }
+
+          } else if (item.key === 'orders') {
+            try {
+              if (data.orders) {
+                const snap = data.orders;
+                newStats[item.key] = snap.size;
+                
+                const paidOrders = snap.docs.filter((doc: any) => doc.data().paymentStatus === 'paid' || doc.data().isPaid === true);
+                
+                const openOrders = snap.docs.filter((doc: any) => {
+                  const status = doc.data().status;
+                  return status === 'Received' || status === 'Under Review' || status === 'Preparing' || 
+                         status === 'Shipped' || status === 'Arrived Hub' || status === 'Out for Delivery' ||
+                         status === 'Awaiting Payment';
+                });
+                
+                const closedOrders = snap.docs.filter((doc: any) => {
+                  const status = doc.data().status;
+                  return status === 'Delivered' || status === 'Cancelled' || status === 'Delivery Failed';
+                });
+                
+                const newOrders = snap.docs.filter((doc: any) => {
+                  const status = doc.data().status;
+                  return status === 'Received' || status === 'Under Review' || !status;
+                });
+                
+                newDetailedStats[item.key] = {
+                  total: snap.size,
+                  paid: paidOrders.length,
+                  open: openOrders.length,
+                  closed: closedOrders.length,
+                  new: newOrders.length,
+                };
+                
+                const oldOrders = snap.docs.filter((doc: any) => {
+                  const createdAt = doc.data().createdAt;
+                  return createdAt && createdAt.toDate && createdAt.toDate() < sevenDaysAgoTimestamp.toDate();
+                }).length;
+                
+                const newOrdersCount = snap.size - oldOrders;
+                if (oldOrders > 0) {
+                  newTrends[item.key] = Math.round((newOrdersCount / oldOrders) * 100);
+                } else {
+                  newTrends[item.key] = newOrdersCount > 0 ? 100 : 0;
+                }
+              } else {
+                newStats[item.key] = 0;
+                newTrends[item.key] = 0;
+              }
+            } catch {
+              newStats[item.key] = 0;
+              newTrends[item.key] = 0;
+            }
+  
+          } else if (item.key === 'products' || item.key === 'categories') {
+            // البيانات البسيطة
+            try {
+              const targetData = item.key === 'products' ? data.products : data.categories;
+              if (targetData) {
+                newStats[item.key] = targetData.size;
+                
+                const oldCount = targetData.docs.filter((doc: any) => {
+                  const createdAt = doc.data().createdAt;
+                  return createdAt && createdAt.toDate && createdAt.toDate() < sevenDaysAgoTimestamp.toDate();
+                }).length;
+                
+                const newCount = targetData.size - oldCount;
+                if (oldCount > 0) {
+                  newTrends[item.key] = Math.round((newCount / oldCount) * 100);
+                } else {
+                  newTrends[item.key] = newCount > 0 ? 100 : 0;
+                }
+              } else {
+                newStats[item.key] = 0;
+                newTrends[item.key] = 0;
+              }
+            } catch {
+              newStats[item.key] = 0;
+              newTrends[item.key] = 0;
+            }
           }
         }
+
+        if (!isMounted) return;
+        setStats(newStats);
+        setDetailedStats(newDetailedStats);
+        setTrends(newTrends);
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
-      if (!isMounted) return;
-      setStats(newStats);
-      setDetailedStats(newDetailedStats);
-      setTrends(newTrends);
-      setLoading(false);
     }
+
     fetchStats();
     return () => {
       isMounted = false;
