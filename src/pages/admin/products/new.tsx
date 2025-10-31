@@ -40,6 +40,7 @@ export default function NewProduct() {
   const [season, setSeason] = useState<string>(''); // Summer, Winter, All Season
   const [deliveryTime, setDeliveryTime] = useState('');
   const [rate, setRate] = useState(0);
+  const [reviewsCount, setReviewsCount] = useState(0);
   const [available, setAvailable] = useState(true);
   const [featured, setFeatured] = useState(false);
   const [images, setImages] = useState<File[]>([]);
@@ -375,7 +376,8 @@ export default function NewProduct() {
         deliveryTime,
         rating: rate,
         rate,
-        reviews: 0, // Initial reviews count
+        reviews: reviewsCount, // Reviews count
+        reviewsCount, // Also save as reviewsCount for compatibility
         
         // Availability (React Native expects "inStock" not "available")
         available,
@@ -1292,6 +1294,23 @@ export default function NewProduct() {
                     value={rate}
                     onChange={e => setRate(Number(e.target.value))}
                     className="w-full border-2 border-gray-200 rounded-xl px-4 py-3.5 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-200 outline-none"
+                  />
+                </label>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block">
+                  <div className="text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+                    <span className="text-xl">💬</span>
+                    <span>عدد المراجعات - Reviews Count</span>
+                  </div>
+                  <input
+                    type="number"
+                    min={0}
+                    value={reviewsCount}
+                    onChange={e => setReviewsCount(Number(e.target.value))}
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3.5 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-200 outline-none"
+                    placeholder="0"
                   />
                 </label>
               </div>

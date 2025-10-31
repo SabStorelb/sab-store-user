@@ -40,6 +40,8 @@ export default function EditProduct() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [rate, setRate] = useState(0);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [reviewsCount, setReviewsCount] = useState(0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [available, setAvailable] = useState(true);
   
   // Images
@@ -105,6 +107,7 @@ export default function EditProduct() {
           setSeason(data.season || '');
           setDeliveryTime(data.deliveryTime || '');
           setRate(data.rate || data.rating || 0);
+          setReviewsCount(data.reviews || data.reviewsCount || 0);
           setAvailable(data.available !== undefined ? data.available : true);
         }
       } catch (error) {
