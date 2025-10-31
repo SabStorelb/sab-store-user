@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { firebaseDb, firebaseStorage, firebaseAuth } from '../../../lib/firebase';
 import { collection, getDocs, addDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+
 
 export default function NewProduct() {
   const router = useRouter();
@@ -27,7 +28,7 @@ export default function NewProduct() {
   const [descEn, setDescEn] = useState('');
   const [descAr, setDescAr] = useState('');
   const [price, setPrice] = useState(0);
-  const [currency, setCurrency] = useState('USD');
+  const [currency] = useState('USD');
   const [stock, setStock] = useState(0);
   const [category, setCategory] = useState('');
   const [subcategory, setSubcategory] = useState('');
@@ -78,9 +79,28 @@ export default function NewProduct() {
     { ar: '14+ سنة', en: '14+ years' },
   ];
   
-  const [categories, setCategories] = useState<any[]>([]);
-  const [subcategories, setSubcategories] = useState<any[]>([]);
-  const [brands, setBrands] = useState<any[]>([]);
+  interface CategoryData {
+    id: string;
+    nameAr?: string;
+    nameEn?: string;
+    name?: string;
+  }
+  interface BrandData {
+    id: string;
+    nameAr?: string;
+    nameEn?: string;
+    name?: string;
+  }
+  interface SubcategoryData {
+    id: string;
+    nameAr?: string;
+    nameEn?: string;
+    name?: string;
+  }
+  
+  const [categories, setCategories] = useState<CategoryData[]>([]);
+  const [subcategories, setSubcategories] = useState<SubcategoryData[]>([]);
+  const [brands, setBrands] = useState<BrandData[]>([]);
 
   useEffect(() => {
     async function loadData() {
@@ -122,60 +142,6 @@ export default function NewProduct() {
   }
 
   // Compress image before upload
-  async function compressImage(file: File, maxSizeMB = 1): Promise<File> {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (e) => {
-        const img = new Image();
-        img.src = e.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          
-          // Max dimensions
-          const MAX_WIDTH = 1200;
-          const MAX_HEIGHT = 1200;
-          
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-          
-          canvas.toBlob(
-            (blob) => {
-              if (blob) {
-                const compressedFile = new File([blob], file.name, {
-                  type: 'image/jpeg',
-                  lastModified: Date.now(),
-                });
-                console.log(`🗜️ Compressed ${file.name}: ${(file.size / 1024).toFixed(2)} KB → ${(compressedFile.size / 1024).toFixed(2)} KB`);
-                resolve(compressedFile);
-              } else {
-                resolve(file);
-              }
-            },
-            'image/jpeg',
-            0.8 // Quality
-          );
-        };
-      };
-    });
-  }
-
   // Upload with retry logic - SIMPLIFIED VERSION
   async function uploadImageWithRetry(file: File, retries = 2): Promise<string> {
     // Check authentication before upload
@@ -198,19 +164,20 @@ export default function NewProduct() {
         
         // Direct upload without compression for testing
         console.log('⏳ Starting upload...');
-        const uploadResult = await uploadBytes(storageRef, file);
+        await uploadBytes(storageRef, file);
         console.log('✅ Upload successful!');
         
         const url = await getDownloadURL(storageRef);
         console.log('🔗 Download URL obtained:', url.substring(0, 60) + '...');
         
         return url;
-      } catch (error: any) {
-        console.error(`❌ Attempt ${attempt} failed:`, error.message);
-        console.error('Error code:', error.code);
+      } catch (error: unknown) {
+        const err = error as { message?: string; code?: string };
+        console.error(`❌ Attempt ${attempt} failed:`, err.message);
+        console.error('Error code:', err.code);
         
         if (attempt === retries) {
-          throw new Error(`فشل رفع الصورة ${file.name} بعد ${retries} محاولات: ${error.message}`);
+          throw new Error(`فشل رفع الصورة ${file.name} بعد ${retries} محاولات: ${err.message || 'خطأ غير معروف'}`);
         }
         
         // Wait before retry
@@ -308,9 +275,10 @@ export default function NewProduct() {
           setUploadProgress(progress);
           console.log(`✅ Image ${i + 1}/${totalImages} completed - Progress: ${progress}%`);
           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-        } catch (imgError: any) {
+        } catch (imgError: unknown) {
+          const imgErr = imgError as { message?: string };
           console.error(`❌ FINAL ERROR - Failed to upload image ${i + 1}:`, imgError);
-          throw new Error(imgError.message || `فشل رفع الصورة ${i + 1}: ${img.name}`);
+          throw new Error(imgErr.message || `فشل رفع الصورة ${i + 1}: ${img.name}`);
         }
       }
 
@@ -402,15 +370,16 @@ export default function NewProduct() {
       setTimeout(() => {
         router.push('/admin/products');
       }, 500);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { message?: string; code?: string; stack?: string };
       console.error('❌ ERROR in handleSubmit:', error);
       console.error('Error details:', {
-        message: error.message,
-        code: error.code,
-        stack: error.stack
+        message: err.message,
+        code: err.code,
+        stack: err.stack
       });
       
-      setUploadStatus(`خطأ: ${error.message || 'حدث خطأ غير متوقع'}`);
+      setUploadStatus(`خطأ: ${err.message || 'حدث خطأ غير متوقع'}`);
       
       // Wait 3 seconds before allowing retry
       setTimeout(() => {
@@ -726,7 +695,7 @@ export default function NewProduct() {
                         ? 'جاري التحميل... أو لا توجد فئات فرعية'
                         : 'اختر الفئة الفرعية'}
                     </option>
-                    {subcategories.map((sub: any) => (
+                    {subcategories.map((sub) => (
                       <option key={sub.id} value={sub.id}>
                         {sub.nameAr || sub.name || sub.id} | {sub.nameEn || sub.name || sub.id}
                       </option>
@@ -1115,6 +1084,7 @@ export default function NewProduct() {
                     {imagePreviews.map((preview, i) => (
                       <div key={i} className="relative group">
                         <div className="aspect-square rounded-lg overflow-hidden shadow-lg border-2 border-white group-hover:border-teal-400 transition-all duration-200">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img 
                             src={preview} 
                             alt={`Preview ${i + 1}`} 
