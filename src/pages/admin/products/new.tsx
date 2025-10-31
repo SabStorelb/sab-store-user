@@ -29,13 +29,6 @@ export default function NewProduct() {
   const [price, setPrice] = useState(0);
   const [currency, setCurrency] = useState('USD');
   const [stock, setStock] = useState(0);
-  
-  // Cost Accounting Fields
-  const [purchasePrice, setPurchasePrice] = useState(0); // سعر الشراء
-  const [profitMargin, setProfitMargin] = useState(0); // نسبة الربح %
-  const [shippingCost, setShippingCost] = useState(0); // كلفة الشحن
-  const [deliveryCost, setDeliveryCost] = useState(0); // كلفة التوصيل
-  const [finalPrice, setFinalPrice] = useState(0); // السعر النهائي المحسوب
   const [category, setCategory] = useState('');
   const [subcategory, setSubcategory] = useState('');
   const [brand, setBrand] = useState('');
@@ -87,19 +80,6 @@ export default function NewProduct() {
   const [categories, setCategories] = useState<any[]>([]);
   const [subcategories, setSubcategories] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
-
-  // Auto-calculate final price when cost fields change
-  useEffect(() => {
-    const calculateFinalPrice = () => {
-      // السعر النهائي = (سعر الشراء + كلفة الشحن + كلفة التوصيل) × (1 + نسبة الربح / 100)
-      const totalCost = purchasePrice + shippingCost + deliveryCost;
-      const calculated = totalCost * (1 + profitMargin / 100);
-      setFinalPrice(Number(calculated.toFixed(2)));
-      setPrice(Number(calculated.toFixed(2)));
-    };
-    
-    calculateFinalPrice();
-  }, [purchasePrice, profitMargin, shippingCost, deliveryCost]);
 
   useEffect(() => {
     async function loadData() {
@@ -365,15 +345,6 @@ export default function NewProduct() {
         price,
         currency,
         stock,
-        
-        // Cost Accounting
-        purchasePrice,
-        profitMargin,
-        shippingCost,
-        deliveryCost,
-        finalPrice,
-        totalCost: purchasePrice + shippingCost + deliveryCost,
-        netProfit: finalPrice - (purchasePrice + shippingCost + deliveryCost),
         
         // Category & Brand (both ID and name)
         category: selectedCategory?.name || selectedCategory?.nameEn || 'Fashion',
@@ -641,144 +612,12 @@ export default function NewProduct() {
               </div>
             </div>
             
-            {/* Cost Accounting Section */}
-            <div className="mb-8 p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-200">
-              <div className="flex items-center gap-2 mb-4">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-                <h3 className="text-lg font-bold text-green-800">🧮 حاسبة التكلفة والربح</h3>
-              </div>
-              <p className="text-sm text-green-700 mb-4">أدخل التكاليف وسيتم حساب السعر النهائي تلقائياً</p>
-              
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                <div className="space-y-2">
-                  <label className="block">
-                    <div className="text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
-                      <span className="text-xl">💵</span>
-                      <span>سعر الشراء *</span>
-                    </div>
-                    <input
-                      type="number"
-                      value={purchasePrice}
-                      onChange={e => setPurchasePrice(Number(e.target.value))}
-                      min="0"
-                      step="0.01"
-                      className="w-full border-2 border-green-300 rounded-xl px-4 py-3 focus:border-green-500 focus:ring-4 focus:ring-green-100 transition-all duration-200 outline-none text-lg font-semibold bg-white"
-                      placeholder="0.00"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">السعر الذي اشتريت به المنتج</p>
-                  </label>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block">
-                    <div className="text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
-                      <span className="text-xl">📈</span>
-                      <span>نسبة الربح %</span>
-                    </div>
-                    <input
-                      type="number"
-                      value={profitMargin}
-                      onChange={e => setProfitMargin(Number(e.target.value))}
-                      min="0"
-                      max="1000"
-                      step="1"
-                      className="w-full border-2 border-green-300 rounded-xl px-4 py-3 focus:border-green-500 focus:ring-4 focus:ring-green-100 transition-all duration-200 outline-none text-lg font-semibold bg-white"
-                      placeholder="0"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">مثال: 50 تعني ربح 50%</p>
-                  </label>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block">
-                    <div className="text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
-                      <span className="text-xl">📦</span>
-                      <span>كلفة الشحن</span>
-                    </div>
-                    <input
-                      type="number"
-                      value={shippingCost}
-                      onChange={e => setShippingCost(Number(e.target.value))}
-                      min="0"
-                      step="0.01"
-                      className="w-full border-2 border-green-300 rounded-xl px-4 py-3 focus:border-green-500 focus:ring-4 focus:ring-green-100 transition-all duration-200 outline-none text-lg font-semibold bg-white"
-                      placeholder="0.00"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">تكلفة شحن المنتج من المورد</p>
-                  </label>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block">
-                    <div className="text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
-                      <span className="text-xl">🚚</span>
-                      <span>كلفة التوصيل</span>
-                    </div>
-                    <input
-                      type="number"
-                      value={deliveryCost}
-                      onChange={e => setDeliveryCost(Number(e.target.value))}
-                      min="0"
-                      step="0.01"
-                      className="w-full border-2 border-green-300 rounded-xl px-4 py-3 focus:border-green-500 focus:ring-4 focus:ring-green-100 transition-all duration-200 outline-none text-lg font-semibold bg-white"
-                      placeholder="0.00"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">تكلفة توصيل المنتج للعميل</p>
-                  </label>
-                </div>
-              </div>
-
-              {/* Calculation Summary */}
-              {(purchasePrice > 0 || shippingCost > 0 || deliveryCost > 0 || profitMargin > 0) && (
-                <div className="bg-white rounded-xl p-4 border-2 border-green-300 shadow-md">
-                  <h4 className="text-sm font-bold text-green-800 mb-3 flex items-center gap-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                    </svg>
-                    ملخص الحسابات
-                  </h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">سعر الشراء:</span>
-                      <span className="font-semibold text-gray-800">${purchasePrice.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">كلفة الشحن:</span>
-                      <span className="font-semibold text-gray-800">${shippingCost.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">كلفة التوصيل:</span>
-                      <span className="font-semibold text-gray-800">${deliveryCost.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between items-center pt-2 border-t-2 border-gray-200">
-                      <span className="text-gray-700 font-medium">إجمالي التكلفة:</span>
-                      <span className="font-bold text-gray-900">${(purchasePrice + shippingCost + deliveryCost).toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-green-600 font-medium">نسبة الربح ({profitMargin}%):</span>
-                      <span className="font-bold text-green-600">+${((purchasePrice + shippingCost + deliveryCost) * profitMargin / 100).toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between items-center pt-3 border-t-2 border-green-300 bg-green-50 -mx-4 px-4 py-2 rounded-lg">
-                      <span className="text-green-800 font-bold text-base">💰 السعر النهائي المقترح:</span>
-                      <span className="font-bold text-green-600 text-xl">${finalPrice.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between items-center bg-blue-50 -mx-4 px-4 py-2 rounded-lg">
-                      <span className="text-blue-800 font-medium text-sm">صافي الربح المتوقع:</span>
-                      <span className="font-bold text-blue-600">${(finalPrice - (purchasePrice + shippingCost + deliveryCost)).toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-            
             <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <label className="block">
                   <div className="text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
                     <span className="text-xl">💵</span>
-                    <span>السعر النهائي - Final Price *</span>
+                    <span>السعر - Price *</span>
                   </div>
                   <div className="relative">
                     <input
@@ -792,7 +631,6 @@ export default function NewProduct() {
                       placeholder="0.00"
                     />
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">السعر الذي سيظهر للعملاء (محسوب تلقائياً)</p>
                 </label>
               </div>
               

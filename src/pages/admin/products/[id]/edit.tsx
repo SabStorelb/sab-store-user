@@ -17,14 +17,6 @@ export default function EditProduct() {
   const [price, setPrice] = useState('');
   const [currency, setCurrency] = useState('USD');
   const [stock, setStock] = useState('');
-  
-  // Cost Accounting Fields
-  const [purchasePrice, setPurchasePrice] = useState(0);
-  const [profitMargin, setProfitMargin] = useState(0);
-  const [shippingCost, setShippingCost] = useState(0);
-  const [deliveryCost, setDeliveryCost] = useState(0);
-  const [finalPrice, setFinalPrice] = useState(0);
-  
   const [category, setCategory] = useState('');
   const [subcategory, setSubcategory] = useState('');
   const [brand, setBrand] = useState('');
@@ -78,14 +70,6 @@ export default function EditProduct() {
           setPrice(data.price?.toString() || '');
           setCurrency(data.currency || 'USD');
           setStock(data.stock?.toString() || '');
-          
-          // Load cost accounting fields
-          setPurchasePrice(data.purchasePrice || 0);
-          setProfitMargin(data.profitMargin || 0);
-          setShippingCost(data.shippingCost || 0);
-          setDeliveryCost(data.deliveryCost || 0);
-          setFinalPrice(data.finalPrice || data.price || 0);
-          
           setCategory(data.categoryId || '');
           setSubcategory(data.subcategoryId || '');
           setBrand(data.brandId || '');
@@ -105,15 +89,8 @@ export default function EditProduct() {
 
   // Auto-calculate final price when cost fields change
   useEffect(() => {
-    const calculateFinalPrice = () => {
-      const totalCost = purchasePrice + shippingCost + deliveryCost;
-      const calculated = totalCost * (1 + profitMargin / 100);
-      setFinalPrice(Number(calculated.toFixed(2)));
-      setPrice(calculated.toFixed(2));
-    };
-    
-    calculateFinalPrice();
-  }, [purchasePrice, profitMargin, shippingCost, deliveryCost]);
+    // Removed cost calculation logic; employees only set/display final price
+  }, []);
 
   // Load categories, subcategories, and brands
   useEffect(() => {
@@ -237,15 +214,7 @@ export default function EditProduct() {
         price: parseFloat(price),
         currency,
         stock: parseInt(stock) || 0,
-        
-        // Cost Accounting
-        purchasePrice,
-        profitMargin,
-        shippingCost,
-        deliveryCost,
-        finalPrice,
-        totalCost: purchasePrice + shippingCost + deliveryCost,
-        netProfit: finalPrice - (purchasePrice + shippingCost + deliveryCost),
+    // No cost accounting fields for employees
         
         // Category & Brand
         categoryId: category,
