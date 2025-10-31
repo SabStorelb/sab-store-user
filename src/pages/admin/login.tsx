@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { firebaseAuth } from '../../lib/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { firebaseAuth, firebaseDb } from '../../lib/firebase';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/router';
 
 export default function AdminLogin() {
@@ -9,6 +10,13 @@ export default function AdminLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetCode, setResetCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resetStep, setResetStep] = useState(1); // 1: email, 2: code & new password
+  const [resetSuccess, setResetSuccess] = useState(false);
   const router = useRouter();
 
   // Translate Firebase errors to Arabic
@@ -73,6 +81,83 @@ export default function AdminLogin() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleForgotPassword = () => {
+    setShowResetModal(true);
+    setResetEmail(email);
+    setResetStep(1);
+    setError(null);
+  };
+
+  const handleSendResetEmail = async () => {
+    if (!resetEmail) {
+      setError('الرجاء إدخال البريد الإلكتروني - Please enter email');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // First, check if this email belongs to an admin
+      // We need to use the API to check server-side
+      const checkResponse = await fetch('/api/auth/check-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail }),
+      });
+
+      const checkData = await checkResponse.json();
+
+      if (!checkData.isAdmin) {
+        setError('هذا البريد الإلكتروني غير مسجل كمدير - This email is not registered as admin');
+        setLoading(false);
+        return;
+      }
+
+      // If admin, send password reset email with action code settings
+      const actionCodeSettings = {
+        url: 'https://admin.sab-store.com/admin/login',
+        handleCodeInApp: false,
+      };
+      
+      await sendPasswordResetEmail(firebaseAuth, resetEmail, actionCodeSettings);
+      setResetStep(2);
+      setError(null);
+      setLoading(false);
+    } catch (err: any) {
+      setError('فشل إرسال رابط إعادة التعيين - Failed to send reset link');
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!newPassword || !confirmPassword) {
+      setError('الرجاء ملء جميع الحقول - Please fill all fields');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError('كلمات المرور غير متطابقة - Passwords do not match');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setError('كلمة المرور يجب أن تكون 6 أحرف على الأقل - Password must be at least 6 characters');
+      return;
+    }
+
+    setResetSuccess(true);
+    setError(null);
+    
+    setTimeout(() => {
+      setShowResetModal(false);
+      setResetSuccess(false);
+      setResetStep(1);
+      setResetEmail('');
+      setNewPassword('');
+      setConfirmPassword('');
+    }, 3000);
   };
 
   return (
@@ -169,6 +254,17 @@ export default function AdminLogin() {
           </div>
         </label>
 
+        {/* Forgot Password Link */}
+        <div className="text-right mb-6">
+          <button
+            type="button"
+            onClick={handleForgotPassword}
+            className="text-sm text-purple-600 hover:text-purple-800 underline transition-colors duration-200 font-medium"
+          >
+            نسيت كلمة المرور؟ - Forgot Password?
+          </button>
+        </div>
+
         {/* Submit Button */}
         <button 
           disabled={loading} 
@@ -198,6 +294,97 @@ export default function AdminLogin() {
           <p>🔒 صفحة آمنة - Secure Page</p>
         </div>
       </form>
+
+      {/* Reset Password Modal */}
+      {showResetModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowResetModal(false)}>
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
+                إعادة تعيين كلمة المرور
+              </h2>
+              <button
+                onClick={() => setShowResetModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {resetSuccess ? (
+              /* Success Message */
+              <div className="text-center py-8">
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">تم إرسال رابط التعيين!</h3>
+                <p className="text-gray-600 text-sm">
+                  تحقق من بريدك الإلكتروني واتبع التعليمات لإعادة تعيين كلمة المرور
+                </p>
+              </div>
+            ) : resetStep === 1 ? (
+              /* Step 1: Email Input */
+              <div>
+                <p className="text-gray-600 mb-6 text-sm">
+                  أدخل بريدك الإلكتروني وسنرسل لك رابط إعادة تعيين كلمة المرور
+                </p>
+                
+                <div className="mb-6">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    البريد الإلكتروني - Email
+                  </label>
+                  <input
+                    type="email"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all outline-none"
+                    placeholder="admin@sabstore.com"
+                    autoFocus
+                  />
+                </div>
+
+                <button
+                  onClick={handleSendResetEmail}
+                  className="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 text-white py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                >
+                  إرسال رابط إعادة التعيين
+                </button>
+              </div>
+            ) : (
+              /* Step 2: Success - Email Sent */
+              <div className="text-center py-4">
+                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold text-gray-800 mb-2">تحقق من بريدك الإلكتروني</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  تم إرسال رابط إعادة التعيين إلى<br />
+                  <span className="font-semibold text-purple-600">{resetEmail}</span>
+                </p>
+                <p className="text-xs text-gray-500 mb-6">
+                  الرابط صالح لمدة ساعة واحدة
+                </p>
+                <button
+                  onClick={() => setShowResetModal(false)}
+                  className="text-purple-600 hover:text-purple-800 font-semibold"
+                >
+                  حسناً، فهمت
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         @keyframes fade-in {

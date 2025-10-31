@@ -82,9 +82,14 @@ export default function QuickViewModal({ isOpen, onClose, type, title }: QuickVi
                       )}
                       {type === 'products' && (
                         <>
-                          <div className="font-bold text-lg">{item.name?.ar || item.name?.en || 'منتج'}</div>
+                          <div className="font-bold text-lg">
+                            {typeof item.name === 'object' 
+                              ? (item.name?.ar || item.name?.en || item.nameAr || item.nameEn || 'منتج')
+                              : (item.name || item.nameAr || item.nameEn || 'منتج')
+                            }
+                          </div>
                           <div className="text-sm text-gray-600">
-                            السعر: {item.price || 0} ريال | المخزون: {item.stock || 0}
+                            السعر: ${item.price || 0} USD | المخزون: {item.stock || 0}
                           </div>
                         </>
                       )}
@@ -97,7 +102,12 @@ export default function QuickViewModal({ isOpen, onClose, type, title }: QuickVi
                         </>
                       )}
                       {!['orders', 'products', 'customers'].includes(type) && (
-                        <div className="font-bold">{item.name?.ar || item.name?.en || item.id}</div>
+                        <div className="font-bold">
+                          {typeof item.name === 'object'
+                            ? (item.name?.ar || item.name?.en || item.nameAr || item.nameEn || item.id)
+                            : (item.name || item.nameAr || item.nameEn || item.id)
+                          }
+                        </div>
                       )}
                     </div>
                     <div className="text-xs text-gray-400">#{idx + 1}</div>

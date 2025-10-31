@@ -27,7 +27,7 @@ export default function NewProduct() {
   const [descEn, setDescEn] = useState('');
   const [descAr, setDescAr] = useState('');
   const [price, setPrice] = useState(0);
-  const [currency, setCurrency] = useState('LBP');
+  const [currency, setCurrency] = useState('USD');
   const [stock, setStock] = useState(0);
   const [category, setCategory] = useState('');
   const [subcategory, setSubcategory] = useState('');
@@ -638,19 +638,10 @@ export default function NewProduct() {
                 <label className="block">
                   <div className="text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
                     <span className="text-xl">💱</span>
-                    <span>العملة - Currency *</span>
+                    <span>العملة - Currency</span>
                   </div>
-                  <select
-                    value={currency}
-                    onChange={e => setCurrency(e.target.value)}
-                    required
-                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3.5 focus:border-green-500 focus:ring-4 focus:ring-green-100 transition-all duration-200 outline-none bg-white text-lg font-medium"
-                  >
-                    <option value="LBP">🇱🇧 ليرة لبنانية (LBP)</option>
-                    <option value="USD">🇺🇸 دولار أمريكي (USD)</option>
-                    <option value="SAR">🇸🇦 ريال سعودي (SAR)</option>
-                    <option value="EUR">🇪🇺 يورو (EUR)</option>
-                  </select>
+                  <div className="w-full border-2 border-gray-200 rounded-xl px-4 py-3.5 bg-gray-50 text-lg font-medium text-gray-700 ">دولار أمريكي (USD)
+                  </div>
                 </label>
               </div>
 
@@ -1125,3 +1116,4 @@ export default function NewProduct() {
     </div>
   );
 }
+

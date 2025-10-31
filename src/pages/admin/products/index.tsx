@@ -136,14 +136,18 @@ export default function ProductsPage() {
                     )}
                     <div className="flex-1">
                       <h3 className="font-bold text-xl text-gray-800 mb-1">
-                        {product.nameAr || product.name || 'بدون اسم'}
+                        {product.nameAr || 
+                         (typeof product.name === 'object' ? product.name?.ar : product.name) || 
+                         'بدون اسم'}
                       </h3>
                       <p className="text-sm text-gray-500 mb-2">
-                        {product.name || product.nameAr || 'No name'}
+                        {product.nameEn || 
+                         (typeof product.name === 'object' ? product.name?.en : product.name) || 
+                         'No name'}
                       </p>
                       <div className="flex flex-wrap gap-2 items-center">
                         <span className="bg-gradient-to-r from-purple-600 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-                          {product.price} {product.currency || 'LBP'}
+                          ${product.price} USD
                         </span>
                         {product.stock > 0 ? (
                           <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">
@@ -165,15 +169,15 @@ export default function ProductsPage() {
 
                   {/* Actions */}
                   <div className="flex gap-2">
-                    <button 
-                      className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 font-semibold shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center gap-2" 
-                      onClick={() => alert('تعديل المنتج غير مفعل بعد')}
+                    <Link
+                      href={`/admin/products/${product.id}/edit`}
+                      className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 font-semibold shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center gap-2"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                       تعديل
-                    </button>
+                    </Link>
                     <button 
                       className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 font-semibold shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center gap-2" 
                       onClick={() => handleDelete(product.id)}

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code - Admin Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        p {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .qr-container {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            display: inline-block;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .url {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            font-family: monospace;
+            color: #667eea;
+            font-weight: bold;
+        }
+        .instructions {
+            margin-top: 30px;
+            text-align: right;
+            background: #f0f7ff;
+            padding: 20px;
+            border-radius: 10px;
+            border-right: 4px solid #667eea;
+        }
+        .instructions h3 {
+            color: #667eea;
+            margin-top: 0;
+        }
+        .instructions ol {
+            text-align: right;
+            padding-right: 20px;
+        }
+        .instructions li {
+            margin: 10px 0;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 لوحة تحكم SAB Store</h1>
+        <p>صوّر هذا الـ QR Code للوصول السريع من الجوال</p>
+        
+        <div class="qr-container">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://admin.sab-store.com" 
+                 alt="QR Code" 
+                 width="300" 
+                 height="300">
+        </div>
+        
+        <div class="url">
+            https://admin.sab-store.com
+        </div>
+        
+        <div class="instructions">
+            <h3>📱 طريقة الاستخدام:</h3>
+            <ol>
+                <li>افتح كاميرا الجوال</li>
+                <li>صوّر الـ QR Code</li>
+                <li>اضغط على الإشعار اللي راح يظهر</li>
+                <li>راح يفتح لوحة التحكم مباشرة! 🎉</li>
+            </ol>
+            
+            <h3>💾 أو احفظ الصورة:</h3>
+            <ol>
+                <li>اضغط right-click على الـ QR Code</li>
+                <li>اختر "Save image as..."</li>
+                <li>احفظها في صور الجوال</li>
+                <li>كل ما تبي تفتح، افتح الصورة وصورها بالكاميرا</li>
+            </ol>
+        </div>
+    </div>
+</body>
+</html>
