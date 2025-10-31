@@ -54,14 +54,24 @@ export default function OrdersList() {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 p-4 md:p-8">
       {/* Header Section */}
       <div className="max-w-7xl mx-auto">
-        <Link href="/admin/dashboard">
-          <button className="mb-6 px-6 py-3 bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 group">
-            <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            <span className="font-semibold">عودة | Back</span>
-          </button>
-        </Link>
+        <div className="mb-6 flex items-center gap-3">
+          <Link href="/admin/dashboard">
+            <button className="px-6 py-3 bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 group">
+              <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              <span className="font-semibold">عودة | Back</span>
+            </button>
+          </Link>
+          <Link href="/admin/dashboard">
+            <button className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 group">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+              <span className="font-semibold">Home</span>
+            </button>
+          </Link>
+        </div>
 
         {/* Page Header */}
         <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 mb-6 border-2 border-purple-100">
