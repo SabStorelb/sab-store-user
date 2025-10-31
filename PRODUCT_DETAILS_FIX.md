@@ -7,10 +7,76 @@
 - ❌ مدة التوصيل (Delivery Time)
 - ❌ حالة التوفر (Stock Availability)
 - ❌ الفئة العمرية (Age Range)
+- ❌ الجنس (Gender)
+- ❌ الموسم (Season)
+- ❌ العلامة التجارية (Brand Name)
+- ❌ الفئة (Category Name)
 
 ---
 
 ## ✅ الحل الكامل
+
+### 0️⃣ العلامة التجارية والفئة (Brand & Category) - **مهم جداً!**
+
+**في بطاقة المنتج الرئيسية (Product Card) وصفحة التفاصيل:**
+
+```jsx
+{/* في بطاقة المنتج */}
+<View style={styles.productCard}>
+  <Image source={{uri: product.image}} style={styles.productImage} />
+  
+  {/* Brand Badge */}
+  {product.brandName && (
+    <View style={styles.brandBadge}>
+      <Text style={styles.brandText}>{product.brandName}</Text>
+    </View>
+  )}
+  
+  <Text style={styles.productName}>
+    {product.name?.ar || product.nameAr}
+  </Text>
+  
+  {/* Category */}
+  {product.categoryName && (
+    <Text style={styles.categoryText}>
+      📁 {product.categoryName}
+    </Text>
+  )}
+  
+  <Text style={styles.price}>${product.price}</Text>
+</View>
+
+{/* في صفحة تفاصيل المنتج - بعد العنوان مباشرة */}
+<View style={styles.productHeader}>
+  <Text style={styles.productTitle}>
+    {product.name?.ar || product.nameAr}
+  </Text>
+  
+  {/* Brand Info */}
+  {product.brandName && (
+    <View style={styles.brandSection}>
+      <Text style={styles.brandLabel}>العلامة التجارية | Brand:</Text>
+      <Text style={styles.brandValue}>{product.brandName}</Text>
+    </View>
+  )}
+  
+  {/* Category & Subcategory */}
+  <View style={styles.categorySection}>
+    {product.categoryName && (
+      <Text style={styles.categoryBadge}>
+        📁 {product.categoryName}
+      </Text>
+    )}
+    {product.subcategoryName && (
+      <Text style={styles.subcategoryBadge}>
+        📂 {product.subcategoryName}
+      </Text>
+    )}
+  </View>
+</View>
+```
+
+---
 
 ### 1️⃣ الألوان (Colors)
 
@@ -207,6 +273,108 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 12,
     color: '#333',
+  },
+  
+  // ========== Brand & Category ==========
+  productHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  productTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+    marginBottom: 8,
+  },
+  brandSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+    gap: 8,
+  },
+  brandLabel: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '500',
+  },
+  brandValue: {
+    fontSize: 15,
+    color: '#7C3AED',
+    fontWeight: 'bold',
+  },
+  brandBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(124, 58, 237, 0.9)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    zIndex: 10,
+  },
+  brandText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  categorySection: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  categoryBadge: {
+    backgroundColor: '#EDE9FE',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    fontSize: 12,
+    color: '#7C3AED',
+    fontWeight: '600',
+  },
+  subcategoryBadge: {
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    fontSize: 12,
+    color: '#2563EB',
+    fontWeight: '600',
+  },
+  categoryText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+  productCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  productImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  productName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginVertical: 4,
+  },
+  price: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#7C3AED',
+    marginTop: 4,
   },
   
   // ========== Colors ==========
@@ -412,6 +580,8 @@ const styles = StyleSheet.create({
 ```javascript
 {
   "name": { "ar": "...", "en": "..." },
+  "nameAr": "...",
+  "nameEn": "...",
   "description": { "ar": "...", "en": "..." },
   "price": 20,
   "currency": "USD",
@@ -419,6 +589,18 @@ const styles = StyleSheet.create({
   "available": true,
   "inStock": true,
   "deliveryTime": "2-3 days",
+  
+  // Brand & Category - مهم جداً!
+  "brand": "SAB",
+  "brandName": "SAB",
+  "brandId": "sab-brand-id",
+  "category": "Fashion",
+  "categoryName": "Fashion",
+  "categoryId": "fashion-id",
+  "subcategory": "Kids Wear",
+  "subcategoryName": "Kids Wear",
+  "subcategoryId": "kids-wear-id",
+  
   "colors": [
     { "ar": "أحمر", "en": "Red", "hex": "#FF0000" },
     { "ar": "أبيض", "en": "White", "hex": "#FFFFFF" }
@@ -436,6 +618,8 @@ const styles = StyleSheet.create({
 
 ## ✅ Checklist للمطور
 
+- [ ] إضافة عرض العلامة التجارية (Brand) في بطاقة المنتج والتفاصيل
+- [ ] إضافة عرض الفئة والفئة الفرعية (Category & Subcategory)
 - [ ] إضافة عرض الألوان مع الدوائر الملونة
 - [ ] إضافة عرض المقاسات (ملابس + أحذية)
 - [ ] إضافة عرض مدة التوصيل
