@@ -3,18 +3,62 @@ import { firebaseDb } from '../../../lib/firebase';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import Link from 'next/link';
 
+interface ShippingAddress {
+  fullName?: string;
+  country?: string;
+  city?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  zipCode?: string;
+  phoneNumber?: string;
+}
+
+interface OrderProduct {
+  nameAr?: string;
+  name?: string;
+  price: number;
+  qty: number;
+  currency?: string;
+}
+
+interface Order {
+  id: string;
+  status: string;
+  createdAt?: string;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  shippingAddress?: ShippingAddress;
+  products?: OrderProduct[];
+  total: number;
+  subtotal?: number;
+  deliveryFee?: number;
+  currency?: string;
+}
+
+interface StatusCounts {
+  [key: string]: number;
+}
+
+interface StatusColors {
+  [key: string]: string;
+}
+
 export default function OrdersList() {
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
   useEffect(() => {
     async function fetchOrders() {
       const snap = await getDocs(collection(firebaseDb, 'orders'));
-      const ordersData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const ordersData = snap.docs.map(doc => ({ 
+        id: doc.id, 
+        ...doc.data() 
+      } as Order));
       // Sort by newest first
-      ordersData.sort((a: any, b: any) => {
+      ordersData.sort((a: Order, b: Order) => {
         const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return dateB - dateA;
@@ -26,7 +70,7 @@ export default function OrdersList() {
   }, []);
 
   const getStatusColor = (status: string) => {
-    const colors: any = {
+    const colors: StatusColors = {
       'Cancelled': 'bg-red-500 text-white',
       'Delivered': 'bg-green-500 text-white',
       'Preparing': 'bg-purple-500 text-white',
@@ -45,7 +89,7 @@ export default function OrdersList() {
 
   const filteredOrders = filterStatus === 'all' ? orders : orders.filter(o => o.status === filterStatus);
 
-  const statusCounts = orders.reduce((acc: any, order) => {
+  const statusCounts = orders.reduce((acc: StatusCounts, order) => {
     acc[order.status] = (acc[order.status] || 0) + 1;
     return acc;
   }, {});
@@ -281,7 +325,7 @@ export default function OrdersList() {
                 </h3>
                 {selectedOrder.products && selectedOrder.products.length > 0 ? (
                   <div className="space-y-3">
-                    {selectedOrder.products.map((prod: any, idx: number) => (
+                    {selectedOrder.products.map((prod: OrderProduct, idx: number) => (
                       <div key={idx} className="bg-white rounded-xl p-4 flex items-center justify-between shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex-1">
                           <div className="font-semibold text-gray-800">{prod.nameAr || prod.name || '---'}</div>
@@ -357,7 +401,7 @@ export default function OrdersList() {
                           await updateDoc(orderRef, { status });
                           setSelectedOrder({ ...selectedOrder, status });
                           setOrders(orders.map(o => o.id === selectedOrder.id ? { ...o, status } : o));
-                        } catch (err) {
+                        } catch {
                           alert('حدث خطأ أثناء تحديث الحالة');
                         }
                       }}
