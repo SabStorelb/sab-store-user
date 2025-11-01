@@ -4,6 +4,23 @@ import { firebaseDb, firebaseStorage } from '../../../../lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
+interface BannerLink {
+  type: string;
+  id?: string;
+  titleAr?: string;
+  titleEn?: string;
+  subtitleAr?: string;
+  subtitleEn?: string;
+}
+
+interface Banner {
+  image: string;
+  isActive?: boolean;
+  order?: number;
+  link?: BannerLink;
+  createdAt?: unknown;
+}
+
 export default function EditBanner() {
   const router = useRouter();
   const { id } = router.query;
@@ -11,7 +28,7 @@ export default function EditBanner() {
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState('');
-  const [banner, setBanner] = useState<any>(null);
+  const [banner, setBanner] = useState<Banner | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [image, setImage] = useState('');
 
@@ -22,8 +39,15 @@ export default function EditBanner() {
       try {
         const snap = await getDoc(doc(firebaseDb, 'banners', String(id)));
         if (snap.exists()) {
-          setBanner(snap.data());
-          setImage(snap.data().image || '');
+          const data = snap.data();
+          setBanner({
+            image: data.image || '',
+            isActive: data.isActive,
+            order: data.order,
+            link: data.link,
+            createdAt: data.createdAt
+          });
+          setImage(data.image || '');
         } else {
           setError('البانر غير موجود');
         }
@@ -37,6 +61,7 @@ export default function EditBanner() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (!banner) return;
     setSaving(true);
     setError('');
     setUploadProgress(0);
@@ -90,7 +115,10 @@ export default function EditBanner() {
       <form className="bg-white rounded shadow p-6 max-w-xl mx-auto flex flex-col gap-4" onSubmit={handleSave}>
         <label className="font-bold">الصورة الحالية</label>
         {image && (
-          <img src={image} alt="Banner preview" className="rounded border w-full max-w-md h-32 object-cover mb-2" />
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={image} alt="Banner preview" className="rounded border w-full max-w-md h-32 object-cover mb-2" />
+          </>
         )}
         <label className="font-bold">تبديل الصورة</label>
         <input type="file" accept="image/*" className="border rounded p-2" onChange={e => {
@@ -101,6 +129,7 @@ export default function EditBanner() {
         {imageFile && (
           <div className="my-2">
             <span className="text-xs">{imageFile.name}</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={URL.createObjectURL(imageFile)} alt="Banner preview" className="rounded border w-48 h-24 object-cover" />
           </div>
         )}
@@ -112,21 +141,21 @@ export default function EditBanner() {
         <label className="font-bold">ترتيب العرض</label>
         <input type="number" className="border rounded p-2" value={banner.order || 1} onChange={e => setBanner({ ...banner, order: Number(e.target.value) })} min={1} />
         <label className="font-bold">نوع الرابط</label>
-        <select className="border rounded p-2" value={banner.link?.type || ''} onChange={e => setBanner({ ...banner, link: { ...banner.link, type: e.target.value } })}>
+        <select className="border rounded p-2" value={banner.link?.type || ''} onChange={e => setBanner({ ...banner, link: { type: e.target.value, ...banner.link } })}>
           <option value="category">Category</option>
           <option value="product">Product</option>
           <option value="brand">Brand</option>
         </select>
         <label className="font-bold">معرف الرابط</label>
-        <input type="text" className="border rounded p-2" value={banner.link?.id || ''} onChange={e => setBanner({ ...banner, link: { ...banner.link, id: e.target.value } })} />
+        <input type="text" className="border rounded p-2" value={banner.link?.id || ''} onChange={e => setBanner({ ...banner, link: { type: banner.link?.type || '', ...banner.link, id: e.target.value } })} />
         <label className="font-bold">العنوان بالعربي</label>
-        <input type="text" className="border rounded p-2" value={banner.link?.titleAr || ''} onChange={e => setBanner({ ...banner, link: { ...banner.link, titleAr: e.target.value } })} />
+        <input type="text" className="border rounded p-2" value={banner.link?.titleAr || ''} onChange={e => setBanner({ ...banner, link: { type: banner.link?.type || '', ...banner.link, titleAr: e.target.value } })} />
         <label className="font-bold">العنوان بالإنجليزي</label>
-        <input type="text" className="border rounded p-2" value={banner.link?.titleEn || ''} onChange={e => setBanner({ ...banner, link: { ...banner.link, titleEn: e.target.value } })} />
+        <input type="text" className="border rounded p-2" value={banner.link?.titleEn || ''} onChange={e => setBanner({ ...banner, link: { type: banner.link?.type || '', ...banner.link, titleEn: e.target.value } })} />
         <label className="font-bold">النص الفرعي بالعربي</label>
-        <input type="text" className="border rounded p-2" value={banner.link?.subtitleAr || ''} onChange={e => setBanner({ ...banner, link: { ...banner.link, subtitleAr: e.target.value } })} />
+        <input type="text" className="border rounded p-2" value={banner.link?.subtitleAr || ''} onChange={e => setBanner({ ...banner, link: { type: banner.link?.type || '', ...banner.link, subtitleAr: e.target.value } })} />
         <label className="font-bold">النص الفرعي بالإنجليزي</label>
-        <input type="text" className="border rounded p-2" value={banner.link?.subtitleEn || ''} onChange={e => setBanner({ ...banner, link: { ...banner.link, subtitleEn: e.target.value } })} />
+        <input type="text" className="border rounded p-2" value={banner.link?.subtitleEn || ''} onChange={e => setBanner({ ...banner, link: { type: banner.link?.type || '', ...banner.link, subtitleEn: e.target.value } })} />
         
         {/* Loading Spinner & Progress */}
         {saving && uploadProgress > 0 && (

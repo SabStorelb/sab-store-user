@@ -16,8 +16,11 @@ export interface ErrorDetails {
 /**
  * معالج أخطاء Firebase Storage
  */
-export function handleStorageError(error: any): ErrorDetails {
+export function handleStorageError(error: unknown): ErrorDetails {
   console.error('❌ Storage Error:', error);
+
+  // التحقق من نوع الخطأ
+  const errorObj = error as { code?: string; message?: string };
 
   // أخطاء Firebase المعروفة
   if (error instanceof FirebaseError) {
@@ -106,7 +109,7 @@ export function handleStorageError(error: any): ErrorDetails {
   }
 
   // أخطاء CORS
-  if (error.message?.includes('CORS') || error.message?.includes('Access-Control')) {
+  if (errorObj.message?.includes('CORS') || errorObj.message?.includes('Access-Control')) {
     return {
       message: '🌐 مشكلة في الاتصال بالخادم',
       technicalMessage: 'CORS policy blocked the request',
@@ -117,7 +120,7 @@ export function handleStorageError(error: any): ErrorDetails {
   }
 
   // أخطاء الشبكة
-  if (error.message?.includes('network') || error.message?.includes('fetch')) {
+  if (errorObj.message?.includes('network') || errorObj.message?.includes('fetch')) {
     return {
       message: '📡 مشكلة في الاتصال بالإنترنت',
       technicalMessage: 'Network error occurred',
@@ -128,7 +131,7 @@ export function handleStorageError(error: any): ErrorDetails {
   }
 
   // أخطاء حجم الملف
-  if (error.message?.includes('size') || error.message?.includes('large')) {
+  if (errorObj.message?.includes('size') || errorObj.message?.includes('large')) {
     return {
       message: '📦 حجم الملف كبير جداً',
       technicalMessage: 'File size exceeds limit',
@@ -141,7 +144,7 @@ export function handleStorageError(error: any): ErrorDetails {
   // خطأ افتراضي
   return {
     message: '❌ حدث خطأ أثناء رفع الملف',
-    technicalMessage: error.message || 'Unknown error',
+    technicalMessage: errorObj.message || 'Unknown error',
     code: 'UNKNOWN_ERROR',
     shouldRetry: true,
     userAction: 'حاول مرة أخرى أو تواصل مع الدعم الفني',
@@ -151,7 +154,7 @@ export function handleStorageError(error: any): ErrorDetails {
 /**
  * معالج أخطاء Firestore
  */
-export function handleFirestoreError(error: any): ErrorDetails {
+export function handleFirestoreError(error: unknown): ErrorDetails {
   console.error('❌ Firestore Error:', error);
 
   if (error instanceof FirebaseError) {
@@ -185,9 +188,11 @@ export function handleFirestoreError(error: any): ErrorDetails {
     }
   }
 
+  const errorObj = error as { message?: string };
+
   return {
     message: '❌ حدث خطأ في قاعدة البيانات',
-    technicalMessage: error.message || 'Unknown firestore error',
+    technicalMessage: errorObj.message || 'Unknown firestore error',
     code: 'FIRESTORE_ERROR',
     shouldRetry: true,
     userAction: 'حاول مرة أخرى',
@@ -197,7 +202,7 @@ export function handleFirestoreError(error: any): ErrorDetails {
 /**
  * تسجيل الأخطاء للمراقبة
  */
-export async function logError(error: ErrorDetails, context?: any) {
+export async function logError(error: ErrorDetails, context?: Record<string, unknown>) {
   const errorLog = {
     ...error,
     context,

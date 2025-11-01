@@ -12,6 +12,7 @@ export default function AddBanner() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
+  const [compressionStatus, setCompressionStatus] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [order, setOrder] = useState(1);
   const [titleAr, setTitleAr] = useState('');
@@ -61,13 +62,23 @@ export default function AddBanner() {
         maxRetries: 3,
         retryDelay: 1500,
         maxFileSize: 5 * 1024 * 1024, // 5MB
+        compress: true, // ✅ تفعيل الضغط التلقائي
+        compressionOptions: {
+          maxSizeMB: 1,           // أقصى حجم 1 ميجا
+          maxWidthOrHeight: 1920, // أقصى بُعد 1920 بكسل
+          quality: 0.85,          // جودة 85%
+        },
         onProgress: (progress) => {
-          // نطاق التقدم: 10% إلى 60%
-          setUploadProgress(10 + Math.round(progress * 0.5));
+          // نطاق التقدم: 10% إلى 70%
+          setUploadProgress(10 + Math.round(progress * 0.6));
         },
         onRetry: (attempt) => {
           setRetryAttempt(attempt);
           setErrorMessage(`🔄 إعادة المحاولة ${attempt}/3...`);
+        },
+        onCompressionProgress: (status) => {
+          setCompressionStatus(status);
+          setErrorMessage(status);
         },
       });
 
@@ -81,7 +92,14 @@ export default function AddBanner() {
 
       const imageUrl = uploadResult.url!;
       
-      setUploadProgress(70);
+      // عرض معلومات الضغط إذا كانت متوفرة
+      if (uploadResult.compressionInfo) {
+        const { savedPercentage, compressedSize } = uploadResult.compressionInfo;
+        console.log(`✅ Compression: Saved ${savedPercentage.toFixed(1)}%, Final size: ${(compressedSize / 1024).toFixed(1)} KB`);
+        setCompressionStatus(`✅ تم الضغط: وفرنا ${savedPercentage.toFixed(1)}%`);
+      }
+      
+      setUploadProgress(80);
 
       // Create banner document
       await addDoc(collection(firebaseDb, 'banners'), {
@@ -294,6 +312,22 @@ export default function AddBanner() {
             🖼️ صورة البانر
           </h2>
           
+          <div className="mb-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">💡</span>
+              <div className="text-sm text-blue-900">
+                <p className="font-bold mb-1">✅ الضغط التلقائي مفعّل</p>
+                <p>سيتم ضغط الصورة تلقائياً لتوفير المساحة وتسريع التحميل:</p>
+                <ul className="list-disc list-inside mt-2 space-y-1 text-xs">
+                  <li>الحجم الأقصى بعد الضغط: <strong>1 ميجابايت</strong></li>
+                  <li>الأبعاد القصوى: <strong>1920 بكسل</strong></li>
+                  <li>الجودة: <strong>85%</strong> (توازن ممتاز بين الحجم والجودة)</li>
+                  <li>التوفير المتوقع: <strong>40-70%</strong> من الحجم الأصلي</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          
           {imagePreview ? (
             <div className="space-y-4">
               <div className="relative rounded-xl overflow-hidden border-4 border-green-200">
@@ -359,6 +393,11 @@ export default function AddBanner() {
                 {retryAttempt > 0 && (
                   <div className="mt-2 text-sm text-orange-600 font-bold">
                     ⏳ محاولة {retryAttempt}/3
+                  </div>
+                )}
+                {compressionStatus && (
+                  <div className="mt-2 text-sm text-green-600 font-bold">
+                    {compressionStatus}
                   </div>
                 )}
               </div>

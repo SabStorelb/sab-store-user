@@ -1,5 +1,5 @@
 // client-side Firebase initialization
-import { initializeApp, getApps, getApp } from 'firebase/app';
+import { initializeApp, getApps, getApp, FirebaseOptions } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -17,7 +17,7 @@ const clientCredentials = {
 
 export function getFirebaseClient() {
   if (!getApps().length) {
-    initializeApp(clientCredentials as any);
+    initializeApp(clientCredentials as FirebaseOptions);
   }
   return getApp();
 }

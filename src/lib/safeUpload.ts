@@ -6,13 +6,17 @@
 import { ref, uploadBytes, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
 import { firebaseStorage, firebaseAuth } from './firebase';
 import { handleStorageError, logError } from './errorHandler';
+import { compressImage, type CompressionOptions } from './imageCompression';
 
 export interface UploadOptions {
   maxRetries?: number;        // عدد محاولات إعادة الرفع (افتراضي: 3)
   retryDelay?: number;        // التأخير بين المحاولات بالملي ثانية (افتراضي: 1000)
   maxFileSize?: number;       // الحجم الأقصى للملف بالبايت (افتراضي: 5MB)
+  compress?: boolean;         // ضغط الصورة تلقائياً (افتراضي: true)
+  compressionOptions?: CompressionOptions;  // خيارات الضغط
   onProgress?: (progress: number) => void;  // دالة لمتابعة التقدم
   onRetry?: (attempt: number) => void;      // دالة تُنفذ عند إعادة المحاولة
+  onCompressionProgress?: (status: string) => void; // تقدم الضغط
 }
 
 export interface UploadResult {
@@ -21,6 +25,11 @@ export interface UploadResult {
   error?: string;
   technicalError?: string;
   attempts?: number;
+  compressionInfo?: {
+    originalSize: number;
+    compressedSize: number;
+    savedPercentage: number;
+  };
 }
 
 /**
@@ -108,11 +117,17 @@ export async function safeUploadFile(
     maxRetries = 3,
     retryDelay = 1000,
     maxFileSize = 5 * 1024 * 1024, // 5MB
+    compress = true,
+    compressionOptions = {},
     onProgress,
     onRetry,
+    onCompressionProgress,
   } = options;
 
   console.log(`📤 Starting upload: ${file.name} to ${storagePath}`);
+
+  let fileToUpload = file;
+  let compressionInfo: UploadResult['compressionInfo'];
 
   // 1. التحقق من صلاحيات المستخدم
   const permissionCheck = await checkUserPermissions();
@@ -126,11 +141,49 @@ export async function safeUploadFile(
     };
   }
 
-  // 2. التحقق من صحة الملف
-  const validation = validateFile(file, maxFileSize);
+  // 2. ضغط الصورة إذا كان مطلوباً
+  if (compress && file.type.startsWith('image/')) {
+    try {
+      if (onCompressionProgress) {
+        onCompressionProgress('🗜️ جاري ضغط الصورة...');
+      }
+
+      console.log(`🗜️ Compressing image: ${file.name}`);
+      const compressionResult = await compressImage(file, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        quality: 0.85,
+        ...compressionOptions,
+      });
+
+      fileToUpload = compressionResult.compressed;
+      compressionInfo = {
+        originalSize: compressionResult.originalSize,
+        compressedSize: compressionResult.compressedSize,
+        savedPercentage: compressionResult.compressionRatio,
+      };
+
+      if (onCompressionProgress) {
+        onCompressionProgress(
+          `✅ تم الضغط: وفرنا ${compressionResult.compressionRatio.toFixed(1)}%`
+        );
+      }
+
+      console.log(
+        `✅ Compression saved ${compressionResult.compressionRatio.toFixed(1)}%`
+      );
+    } catch (compressionError) {
+      console.warn('⚠️ Compression failed, uploading original:', compressionError);
+      // إذا فشل الضغط، نرفع الصورة الأصلية
+      fileToUpload = file;
+    }
+  }
+
+  // 3. التحقق من صحة الملف
+  const validation = validateFile(fileToUpload, maxFileSize);
   if (!validation.valid) {
     const error = handleStorageError(new Error(validation.error));
-    await logError(error, { file: file.name, storagePath });
+    await logError(error, { file: fileToUpload.name, storagePath });
     return {
       success: false,
       error: validation.error,
@@ -163,7 +216,7 @@ export async function safeUploadFile(
 
       // رفع مع متابعة التقدم
       if (onProgress) {
-        const uploadTask = uploadBytesResumable(storageRef, file);
+        const uploadTask = uploadBytesResumable(storageRef, fileToUpload);
 
         await new Promise<void>((resolve, reject) => {
           uploadTask.on(
@@ -178,7 +231,7 @@ export async function safeUploadFile(
         });
       } else {
         // رفع بسيط بدون متابعة التقدم
-        await uploadBytes(storageRef, file);
+        await uploadBytes(storageRef, fileToUpload);
       }
 
       // الحصول على رابط التحميل
@@ -189,6 +242,7 @@ export async function safeUploadFile(
         success: true,
         url: downloadURL,
         attempts: attempt,
+        compressionInfo,
       };
 
     } catch (error) {
@@ -200,7 +254,7 @@ export async function safeUploadFile(
 
       // إذا كان الخطأ لا يستحق إعادة المحاولة، نتوقف
       if (!errorDetails.shouldRetry) {
-        await logError(errorDetails, { file: file.name, storagePath, attempt });
+        await logError(errorDetails, { file: fileToUpload.name, storagePath, attempt });
         return {
           success: false,
           error: errorDetails.message,
@@ -219,7 +273,7 @@ export async function safeUploadFile(
 
   // فشلت جميع المحاولات
   const errorDetails = handleStorageError(lastError);
-  await logError(errorDetails, { file: file.name, storagePath, attempts: maxRetries });
+  await logError(errorDetails, { file: fileToUpload.name, storagePath, attempts: maxRetries });
 
   return {
     success: false,
