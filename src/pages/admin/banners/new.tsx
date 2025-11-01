@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { firebaseDb, firebaseStorage } from '../../../lib/firebase';
+import { firebaseDb } from '../../../lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { safeUploadFile } from '../../../lib/safeUpload';
 
 export default function AddBanner() {
   const router = useRouter();
@@ -10,6 +10,8 @@ export default function AddBanner() {
   const [imagePreview, setImagePreview] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [retryAttempt, setRetryAttempt] = useState(0);
+  const [errorMessage, setErrorMessage] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [order, setOrder] = useState(1);
   const [titleAr, setTitleAr] = useState('');
@@ -46,21 +48,40 @@ export default function AddBanner() {
 
     setUploading(true);
     setUploadProgress(0);
+    setErrorMessage('');
 
     try {
-      // Progress simulation
-      setUploadProgress(25);
+      setUploadProgress(10);
       
-      // Upload image
+      // رفع الصورة باستخدام النظام الآمن
       const tempId = Date.now().toString();
-      const storageRef = ref(firebaseStorage, `banners/${tempId}/image.jpg`);
-      await uploadBytes(storageRef, imageFile);
+      const storagePath = `banners/${tempId}/image.jpg`;
       
-      setUploadProgress(50);
+      const uploadResult = await safeUploadFile(imageFile, storagePath, {
+        maxRetries: 3,
+        retryDelay: 1500,
+        maxFileSize: 5 * 1024 * 1024, // 5MB
+        onProgress: (progress) => {
+          // نطاق التقدم: 10% إلى 60%
+          setUploadProgress(10 + Math.round(progress * 0.5));
+        },
+        onRetry: (attempt) => {
+          setRetryAttempt(attempt);
+          setErrorMessage(`🔄 إعادة المحاولة ${attempt}/3...`);
+        },
+      });
+
+      if (!uploadResult.success) {
+        setErrorMessage(uploadResult.error || 'فشل رفع الصورة');
+        alert(uploadResult.error || 'فشل رفع الصورة ❌');
+        setUploading(false);
+        setUploadProgress(0);
+        return;
+      }
+
+      const imageUrl = uploadResult.url!;
       
-      const imageUrl = await getDownloadURL(storageRef);
-      
-      setUploadProgress(75);
+      setUploadProgress(70);
 
       // Create banner document
       await addDoc(collection(firebaseDb, 'banners'), {
@@ -315,18 +336,44 @@ export default function AddBanner() {
           )}
         </div>
 
-        {/* Progress Bar */}
+        {/* Loading Spinner & Progress Bar */}
         {uploading && (
-          <div className="bg-white rounded-2xl shadow-xl p-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-bold text-gray-700">جاري الرفع...</span>
-              <span className="text-sm font-bold text-blue-600">{uploadProgress}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
-              <div
-                className="bg-gradient-to-r from-blue-500 to-purple-600 h-full transition-all duration-300 rounded-full"
-                style={{ width: `${uploadProgress}%` }}
-              />
+          <div className="bg-white rounded-2xl shadow-xl p-8">
+            <div className="flex flex-col items-center justify-center space-y-6">
+              {/* Spinning Loader */}
+              <div className="relative">
+                <div className="w-20 h-20 border-8 border-gray-200 border-t-blue-500 border-r-purple-500 rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-2xl">📤</span>
+                </div>
+              </div>
+              
+              {/* Progress Text */}
+              <div className="text-center">
+                <div className="text-xl font-black text-gray-800 mb-2">
+                  {errorMessage || 'جاري رفع الصورة...'}
+                </div>
+                <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-purple-600">
+                  {uploadProgress}%
+                </div>
+                {retryAttempt > 0 && (
+                  <div className="mt-2 text-sm text-orange-600 font-bold">
+                    ⏳ محاولة {retryAttempt}/3
+                  </div>
+                )}
+              </div>
+              
+              {/* Progress Bar */}
+              <div className="w-full">
+                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 h-full transition-all duration-500 ease-out rounded-full relative overflow-hidden"
+                    style={{ width: `${uploadProgress}%` }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -335,9 +382,16 @@ export default function AddBanner() {
         <button
           type="submit"
           disabled={uploading}
-          className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white py-4 rounded-xl font-black text-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:cursor-not-allowed"
+          className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white py-4 rounded-xl font-black text-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:cursor-not-allowed flex items-center justify-center gap-3"
         >
-          {uploading ? '⏳ جاري الرفع...' : '💾 حفظ البانر'}
+          {uploading ? (
+            <>
+              <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>جاري الرفع...</span>
+            </>
+          ) : (
+            <>💾 حفظ البانر</>
+          )}
         </button>
       </form>
     </div>

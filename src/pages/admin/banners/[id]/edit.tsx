@@ -9,6 +9,7 @@ export default function EditBanner() {
   const { id } = router.query;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState('');
   const [banner, setBanner] = useState<any>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -38,16 +39,21 @@ export default function EditBanner() {
     e.preventDefault();
     setSaving(true);
     setError('');
+    setUploadProgress(0);
     let imageUrl = image;
     if (imageFile) {
       try {
+        setUploadProgress(30);
         const storageRef = ref(firebaseStorage, `Banners/${imageFile.name}`);
         await uploadBytes(storageRef, imageFile);
+        setUploadProgress(60);
         imageUrl = await getDownloadURL(storageRef);
         setImage(imageUrl);
+        setUploadProgress(80);
       } catch {
         setError('تعذر رفع الصورة');
         setSaving(false);
+        setUploadProgress(0);
         return;
       }
     }
@@ -59,11 +65,13 @@ export default function EditBanner() {
         link: banner.link,
         createdAt: banner.createdAt,
       });
+      setUploadProgress(100);
       router.push('/admin/banners');
     } catch {
       setError('تعذر حفظ التعديلات');
     }
     setSaving(false);
+    setUploadProgress(0);
   }
 
   if (loading) return <div className="p-8">جاري التحميل...</div>;
@@ -119,9 +127,36 @@ export default function EditBanner() {
         <input type="text" className="border rounded p-2" value={banner.link?.subtitleAr || ''} onChange={e => setBanner({ ...banner, link: { ...banner.link, subtitleAr: e.target.value } })} />
         <label className="font-bold">النص الفرعي بالإنجليزي</label>
         <input type="text" className="border rounded p-2" value={banner.link?.subtitleEn || ''} onChange={e => setBanner({ ...banner, link: { ...banner.link, subtitleEn: e.target.value } })} />
+        
+        {/* Loading Spinner & Progress */}
+        {saving && uploadProgress > 0 && (
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border-2 border-blue-200">
+            <div className="flex items-center justify-center gap-4 mb-3">
+              <div className="w-8 h-8 border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin"></div>
+              <span className="text-lg font-bold text-gray-700">جاري الحفظ...</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-blue-500 to-purple-600 h-full transition-all duration-500 rounded-full"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+            <div className="text-center mt-2 text-sm font-bold text-blue-600">
+              {uploadProgress}%
+            </div>
+          </div>
+        )}
+        
         {error && <div className="text-red-600 font-bold">{error}</div>}
-        <button type="submit" className="bg-purple-600 text-white px-4 py-2 rounded" disabled={saving}>
-          {saving ? 'جاري الحفظ...' : 'حفظ التعديلات'}
+        <button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2" disabled={saving}>
+          {saving ? (
+            <>
+              <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>جاري الحفظ...</span>
+            </>
+          ) : (
+            '💾 حفظ التعديلات'
+          )}
         </button>
       </form>
     </div>

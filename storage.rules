@@ -3,7 +3,7 @@ service firebase.storage {
   match /b/{bucket}/o {
     
     // Store settings (logo, etc) - only SUPER ADMIN can write, everyone can read
-    match /store/{fileName} {
+    match /store/{allPaths=**} {
       allow read: if true;
       allow write: if request.auth != null && 
         firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
@@ -11,7 +11,7 @@ service firebase.storage {
     }
     
     // Vendors/Suppliers logos - only admins can write, everyone can read
-    match /vendors/{fileName} {
+    match /vendors/{allPaths=**} {
       allow read: if true;
       allow write: if request.auth != null && 
         firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
@@ -19,7 +19,7 @@ service firebase.storage {
     }
     
     // Products images - only admins can write, everyone can read
-    match /products/{fileName} {
+    match /products/{allPaths=**} {
       allow read: if true;
       allow write: if request.auth != null && 
         firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
@@ -27,22 +27,30 @@ service firebase.storage {
     }
     
     // Brands/Categories images - only admins can write, everyone can read
-    match /brands/{fileName} {
+    match /brands/{allPaths=**} {
       allow read: if true;
       allow write: if request.auth != null && 
         firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
     
-    match /categories/{fileName} {
+    match /categories/{allPaths=**} {
       allow read: if true;
       allow write: if request.auth != null && 
         firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
     
-    // Banners - only admins can write, everyone can read
-    match /banners/{fileName} {
+    // Banners - only admins can write, everyone can read (FIXED: support subdirectories)
+    match /banners/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Banners with capital B (compatibility)
+    match /Banners/{allPaths=**} {
       allow read: if true;
       allow write: if request.auth != null && 
         firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
