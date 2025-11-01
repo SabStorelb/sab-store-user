@@ -1,17 +1,31 @@
 import Link from 'next/link';
-
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { firebaseDb } from '../../../lib/firebase';
 import { collection, getDocs, doc, deleteDoc } from 'firebase/firestore';
 
+interface Product {
+  id: string;
+  nameAr?: string;
+  nameEn?: string;
+  name?: string | { ar?: string; en?: string };
+  price?: number;
+  stock?: number;
+  images?: string[];
+  featured?: boolean;
+}
+
 export default function ProductsPage() {
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchProducts() {
       const snap = await getDocs(collection(firebaseDb, 'products'));
-      setProducts(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setProducts(snap.docs.map(doc => ({ 
+        id: doc.id, 
+        ...doc.data() 
+      } as Product)));
       setLoading(false);
     }
     fetchProducts();
@@ -133,11 +147,15 @@ export default function ProductsPage() {
                   {/* Product Info */}
                   <div className="flex items-center gap-4 flex-1">
                     {product.images && product.images[0] ? (
-                      <img 
-                        src={product.images[0]} 
-                        alt="صورة المنتج" 
-                        className="w-20 h-20 object-cover rounded-lg shadow-md border-2 border-purple-100" 
-                      />
+                      <div className="relative w-20 h-20 rounded-lg overflow-hidden shadow-md border-2 border-purple-100">
+                        <Image 
+                          src={product.images[0]} 
+                          alt="صورة المنتج"
+                          fill
+                          className="object-cover"
+                          sizes="80px"
+                        />
+                      </div>
                     ) : (
                       <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-100 rounded-lg flex items-center justify-center text-3xl">
                         🛍️
@@ -156,9 +174,9 @@ export default function ProductsPage() {
                       </p>
                       <div className="flex flex-wrap gap-2 items-center">
                         <span className="bg-gradient-to-r from-purple-600 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-                          ${product.price} USD
+                          ${product.price || 0} USD
                         </span>
-                        {product.stock > 0 ? (
+                        {product.stock && product.stock > 0 ? (
                           <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">
                             📦 متوفر ({product.stock})
                           </span>
